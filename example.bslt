@@ -1,0 +1,11 @@
+var a = 32
+const b = 64
+writeln(a)
+a = 3
+writeln(a)
+writeln(b)
+
+free(a)
+
+strict var a = 3 //type cannot be changed in runtime
+strict const b = 3
