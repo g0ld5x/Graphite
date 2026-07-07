@@ -30,6 +30,7 @@ enum class Associativity
     Right
 };
 
+//these are default VOID commands.
 enum class CommandNames{
     WriteLn,
     Write,
@@ -52,8 +53,9 @@ struct VariableData {
 };
 using VariableTable = std::unordered_map<std::string, VariableData>;
 
+
 struct Instruction {
-    enum class Type {
+        enum class Type {
         BuiltIn,
         UserDefined,
         NonDefined,
@@ -64,10 +66,24 @@ struct Instruction {
         Assign
     }; 
     Type type;
+    bool isVoid;
+    VariableTypes returnType;
     CommandNames builtin;     // valid if BuiltIn
-    std::string userName;     // valid if UserDefined
     VariableData vardata;
+
+    std::vector<Instruction> body; //for if conditions that require runtime variables, for and while loops
+    std::vector<Token> condition; //for if conditions that require runtime variables, for and while loops
+
     std::vector<Value> args;
+};
+
+struct Function { //for usermade functions
+    std::string name;
+    bool isVoid;
+    bool isStrict; //does the function allow returns with type inferring, ex:  strict fn hi(){ if(condition){return "hi";} return 2;} will give an error. but fn hello(){if(condition){return "hi"} return 3;} will not.
+    VariableTypes returnType;
+    Value returnVal;
+    std::vector<Instruction> instructions;
 };
 std::vector<Instruction> parse(std::vector<Token>);
 

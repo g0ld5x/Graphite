@@ -1,0 +1,15 @@
+writeln("hello world");
+var a = "hello";
+var a = 3; #valid
+const pi = 3.14;
+strict var name = "Graphite"; #does not allow type inferring because of the strict keyword.
+
+fn hello(x){
+    if(x=="hi"){return "hello";}else{return 0;} #this is allowed because the functions allow type inferring without the strict keyword
+}
+
+strict fn hello(x){
+    if(x=="hi"){return "hello";}else{return 3;} #this will give an error because the strict keyword does not allow type infering
+}
+
+free(a,pi); #free command is used to free variables.

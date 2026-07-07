@@ -16,6 +16,11 @@
 // integrate unordered map plsss!!!!! i did bro no worries (me)
 
 
+bool hold_same_type(const Value& v1, const Value& v2) {
+    //if the indices are equal, the active types are the same
+    return v1.index() == v2.index();
+}
+
 bool stringToBool(const std::string &str)
 {
     if (str == "true")
@@ -26,7 +31,6 @@ bool stringToBool(const std::string &str)
 }
 
 VariableTable variables;
-
 
 double variantToDouble(const Value &value)
 {
@@ -79,7 +83,6 @@ int variantToInt(const Value &value)
 
     return 0;
 }
-
 
 int precedence(TokenType type)
 {
@@ -135,21 +138,21 @@ int precedence(TokenType type)
     }
 }
 
-bool isUnary(const std::vector<Token>& tokens, int index)
+bool isUnary(const std::vector<Token> &tokens, int index)
 {
     TokenType t = tokens[index].type;
 
     switch (t)
     {
-        case TokenType::Not:
-            return true;
+    case TokenType::Not:
+        return true;
 
-        case TokenType::Plus:
-        case TokenType::Minus:
-            break;
+    case TokenType::Plus:
+    case TokenType::Minus:
+        break;
 
-        default:
-            return false;
+    default:
+        return false;
     }
 
     if (index == 0)
@@ -184,8 +187,6 @@ bool isInVariables(Token tok)
     }
 }
 
-
-
 bool isInVector(const std::vector<std::string> &vec, const std::string &target)
 {
     return std::find(vec.begin(), vec.end(), target) != vec.end();
@@ -203,48 +204,49 @@ Associativity associativity(TokenType type)
         return Associativity::Left;
     }
 }
-bool variantToBool(const Value &value){
-    if (const bool* val_ptr = std::get_if<bool>(&value)) {
+bool variantToBool(const Value &value)
+{
+    if (const bool *val_ptr = std::get_if<bool>(&value))
+    {
         return *val_ptr;
-    } else {
-        return stringToBool(variantToString(value));
+    }
+    else
+    {
+        std::cout<<"bad";
+        return false;
+        //handle error here
     }
 }
 
-
-Value Evaluate(const std::vector<Token>& tokens, int left, int right)
+Value Evaluate(const std::vector<Token> &tokens, int left, int right)
 {
-        variables["pi"] = {
+    variables["pi"] = {
         "pi",
         M_PI,
-        true,   // isConst
-        true,   // isStrict
-        VariableTypes::Double
-    };
+        true, // isConst
+        true, // isStrict
+        VariableTypes::Double};
 
     variables["e"] = {
         "e",
         M_E,
-        true,   // isConst
-        true,   // isStrict
-        VariableTypes::Double
-    };
+        true, // isConst
+        true, // isStrict
+        VariableTypes::Double};
 
-        variables["true"] = {
+    variables["true"] = {
         "true",
         true,
-        true,   // isConst
-        true,   // isStrict
-        VariableTypes::Bool
-    };
+        true, // isConst
+        true, // isStrict
+        VariableTypes::Bool};
 
-        variables["false"] = {
+    variables["false"] = {
         "false",
         false,
-        true,   // isConst
-        true,   // isStrict
-        VariableTypes::Bool
-    };
+        true, // isConst
+        true, // isStrict
+        VariableTypes::Bool};
     // Invalid range
     if (left > right)
         throw std::runtime_error("Invalid expression.");
@@ -265,7 +267,6 @@ Value Evaluate(const std::vector<Token>& tokens, int left, int right)
 
         return tokens[left].value;
     }
-
 
     // Strip outer parentheses
     while (tokens[left].type == TokenType::LParen &&
@@ -303,17 +304,17 @@ Value Evaluate(const std::vector<Token>& tokens, int left, int right)
 
         switch (tokens[left].type)
         {
-            case TokenType::Not:
-                return !variantToBool(rhs);
+        case TokenType::Not:
+            return !variantToBool(rhs);
 
-            case TokenType::Minus:
-                return -variantToDouble(rhs);
+        case TokenType::Minus:
+            return -variantToDouble(rhs);
 
-            case TokenType::Plus:
-                return variantToDouble(rhs);
+        case TokenType::Plus:
+            return variantToDouble(rhs);
 
-            default:
-                break;
+        default:
+            break;
         }
     }
 
@@ -367,246 +368,251 @@ Value Evaluate(const std::vector<Token>& tokens, int left, int right)
     Value rhs = Evaluate(tokens, split + 1, right);
     switch (tokens[split].type)
     {
-    
-        case TokenType::Plus:
+
+    case TokenType::Plus:
+        if (std::holds_alternative<std::string>(lhs) && std::holds_alternative<std::string>(rhs) || (std::holds_alternative<std::string>(lhs) || std::holds_alternative<std::string>(rhs)))
+        {
+            return variantToString(lhs).append(variantToString(rhs));
+        }
+        else
+        {
             return variantToDouble(lhs) + variantToDouble(rhs);
-
-        case TokenType::Minus:
-            return variantToDouble(lhs) - variantToDouble(rhs);
-
-        case TokenType::Multiply:
-            return variantToDouble(lhs) * variantToDouble(rhs);
-
-        case TokenType::Division:
-            return variantToDouble(lhs) / variantToDouble(rhs);
-
-        case TokenType::Power:
-            return std::pow(variantToDouble(lhs),variantToDouble(rhs));
-
-        case TokenType::EqualEqual:
-        {
-            bool lhsNumeric =
-                std::holds_alternative<int>(lhs) ||
-                std::holds_alternative<double>(lhs);
-
-            bool rhsNumeric =
-                std::holds_alternative<int>(rhs) ||
-                std::holds_alternative<double>(rhs);
-
-            if (lhsNumeric && rhsNumeric)
-                return variantToDouble(lhs) == variantToDouble(rhs);
-
-            return lhs == rhs;
         }
-        case TokenType::NotEqual:
+
+    case TokenType::Minus:
+        return variantToDouble(lhs) - variantToDouble(rhs);
+
+    case TokenType::Multiply:
+        if (std::holds_alternative<std::string>(lhs) && std::holds_alternative<int>(rhs))
+        {
+            std::string buffer = "";
+            for (int i = 0; i < variantToInt(rhs); i++)
             {
-            bool lhsNumeric =
-                std::holds_alternative<int>(lhs) ||
-                std::holds_alternative<double>(lhs);
-
-            bool rhsNumeric =
-                std::holds_alternative<int>(rhs) ||
-                std::holds_alternative<double>(rhs);
-
-            if (lhsNumeric && rhsNumeric)
-                return variantToDouble(lhs) != variantToDouble(rhs);
-
-            return lhs != rhs;
+                buffer.append(variantToString(lhs));
+            }
+            return buffer;
         }
-
-        case TokenType::Bigger:
+        else if (std::holds_alternative<int>(lhs) && std::holds_alternative<std::string>(rhs))
         {
-            bool lhsNumeric =
-                std::holds_alternative<int>(lhs) ||
-                std::holds_alternative<double>(lhs);
-
-            bool rhsNumeric =
-                std::holds_alternative<int>(rhs) ||
-                std::holds_alternative<double>(rhs);
-
-            if (lhsNumeric && rhsNumeric)
-                return variantToDouble(lhs) > variantToDouble(rhs);
-
-            return lhs > rhs;
+            std::string buffer = "";
+            for (int i = 0; i < variantToInt(lhs); i++)
+            {
+                buffer.append(variantToString(rhs));
+            }
+            return buffer;
         }
-
-        case TokenType::Smaller:
+        else
         {
-            bool lhsNumeric =
-                std::holds_alternative<int>(lhs) ||
-                std::holds_alternative<double>(lhs);
-
-            bool rhsNumeric =
-                std::holds_alternative<int>(rhs) ||
-                std::holds_alternative<double>(rhs);
-
-            if (lhsNumeric && rhsNumeric)
-                return variantToDouble(lhs) < variantToDouble(rhs);
-
-            return lhs < rhs;
+            return variantToDouble(lhs) * variantToDouble(rhs);
         }
 
-        case TokenType::BiggerEqual:
-        {
-            bool lhsNumeric =
-                std::holds_alternative<int>(lhs) ||
-                std::holds_alternative<double>(lhs);
+    case TokenType::Division:
+        return variantToDouble(lhs) / variantToDouble(rhs);
 
-            bool rhsNumeric =
-                std::holds_alternative<int>(rhs) ||
-                std::holds_alternative<double>(rhs);
+    case TokenType::Power:
+        return std::pow(variantToDouble(lhs), variantToDouble(rhs));
 
-            if (lhsNumeric && rhsNumeric)
-                return variantToDouble(lhs) >= variantToDouble(rhs);
+    case TokenType::EqualEqual:
+    {
+        bool lhsNumeric =
+            std::holds_alternative<int>(lhs) ||
+            std::holds_alternative<double>(lhs);
 
-            return lhs >= rhs;
-        }
+        bool rhsNumeric =
+            std::holds_alternative<int>(rhs) ||
+            std::holds_alternative<double>(rhs);
 
-        case TokenType::SmallerEqual:
-        {
-            bool lhsNumeric =
-                std::holds_alternative<int>(lhs) ||
-                std::holds_alternative<double>(lhs);
+        if (lhsNumeric && rhsNumeric)
+            return variantToDouble(lhs) == variantToDouble(rhs);
 
-            bool rhsNumeric =
-                std::holds_alternative<int>(rhs) ||
-                std::holds_alternative<double>(rhs);
+        return lhs == rhs;
+    }
+    case TokenType::NotEqual:
+    {
+        bool lhsNumeric =
+            std::holds_alternative<int>(lhs) ||
+            std::holds_alternative<double>(lhs);
 
-            if (lhsNumeric && rhsNumeric)
-                return variantToDouble(lhs) <= variantToDouble(rhs);
+        bool rhsNumeric =
+            std::holds_alternative<int>(rhs) ||
+            std::holds_alternative<double>(rhs);
 
-            return lhs <= rhs;
-        }
+        if (lhsNumeric && rhsNumeric)
+            return variantToDouble(lhs) != variantToDouble(rhs);
 
-        case TokenType::AndAnd:
-            return variantToBool(lhs) && variantToBool(rhs);
+        return lhs != rhs;
+    }
 
-        case TokenType::OrOr:
-            return variantToBool(lhs) || variantToBool(rhs);
-        default: 
-            throw std::runtime_error("Unknown operator.");
+    case TokenType::Bigger:
+    {
+        bool lhsNumeric =
+            std::holds_alternative<int>(lhs) ||
+            std::holds_alternative<double>(lhs);
+
+        bool rhsNumeric =
+            std::holds_alternative<int>(rhs) ||
+            std::holds_alternative<double>(rhs);
+
+        if (lhsNumeric && rhsNumeric)
+            return variantToDouble(lhs) > variantToDouble(rhs);
+
+        return lhs > rhs;
+    }
+
+    case TokenType::Smaller:
+    {
+        bool lhsNumeric =
+            std::holds_alternative<int>(lhs) ||
+            std::holds_alternative<double>(lhs);
+
+        bool rhsNumeric =
+            std::holds_alternative<int>(rhs) ||
+            std::holds_alternative<double>(rhs);
+
+        if (lhsNumeric && rhsNumeric)
+            return variantToDouble(lhs) < variantToDouble(rhs);
+
+        return lhs < rhs;
+    }
+
+    case TokenType::BiggerEqual:
+    {
+        bool lhsNumeric =
+            std::holds_alternative<int>(lhs) ||
+            std::holds_alternative<double>(lhs);
+
+        bool rhsNumeric =
+            std::holds_alternative<int>(rhs) ||
+            std::holds_alternative<double>(rhs);
+
+        if (lhsNumeric && rhsNumeric)
+            return variantToDouble(lhs) >= variantToDouble(rhs);
+
+        return lhs >= rhs;
+    }
+
+    case TokenType::SmallerEqual:
+    {
+        bool lhsNumeric =
+            std::holds_alternative<int>(lhs) ||
+            std::holds_alternative<double>(lhs);
+
+        bool rhsNumeric =
+            std::holds_alternative<int>(rhs) ||
+            std::holds_alternative<double>(rhs);
+
+        if (lhsNumeric && rhsNumeric)
+            return variantToDouble(lhs) <= variantToDouble(rhs);
+
+        return lhs <= rhs;
+    }
+
+    case TokenType::AndAnd:
+        return variantToBool(lhs) && variantToBool(rhs);
+
+    case TokenType::OrOr:
+        return variantToBool(lhs) || variantToBool(rhs);
+    default:
+        throw std::runtime_error("Unknown operator.");
     }
 }
 
 std::vector<Instruction> parse(std::vector<Token> input)
 {
     std::vector<Instruction> instructions;
-    bool strictMode = false;
+
     Instruction instr;
+    bool strictMode = false;
+
     bool buildingInstr = false;
-    int start = 0;
-    int end = 3;
+
+    int canExecute = true; //for if,while,for statements
+    bool canContinue = false; //for decleration and assignment
+
+    int Parandepth = 0;
+    int Curlydepth = 0;
+
     bool argMode = false;
     std::vector<Token> buffer;
+    std::vector<Instruction> instrbuffer;
     bool declareMode = false;
+    bool assignMode = false;
     for (size_t i = 0; i < input.size(); i++)
     {
         const Token &tok = input[i];
         if (!argMode)
         {
+            if(canExecute && !argMode){
             if (declareMode)
             {
-                if (tok.type == TokenType::String ||
-                    tok.type == TokenType::Number ||
-                    (tok.type == TokenType::Identifier &&
-                     (variantToString(tok.value) == "true" ||
-                      variantToString(tok.value) == "false")))
+                if (tok.type == TokenType::NewLine || tok.type == TokenType::Semicolon)
                 {
                     auto &var = variables[instr.vardata.name];
-
+                    declareMode = !declareMode;
                     var.name = instr.vardata.name;
                     var.isConst = instr.vardata.isConst;
                     var.isStrict = instr.vardata.isStrict;
-
-                    switch (tok.type)
-                    {
-                    case TokenType::String:
-                        var.vartype = VariableTypes::String;
-                        var.value = tok.value;
-                        break;
-
-                    case TokenType::Number:
-                        if (std::holds_alternative<int>(tok.value))
-                            var.vartype = VariableTypes::Int;
-                        else
-                            var.vartype = VariableTypes::Double;
-
-                        var.value = tok.value;
-                        break;
-
-                    case TokenType::Identifier:
-                    {
-                        std::string value = variantToString(tok.value);
-
-                        if (value == "true")
-                        {
-                            var.vartype = VariableTypes::Bool;
-                            var.value = true;
-                        }
-                        else if (value == "false")
-                        {
-                            var.vartype = VariableTypes::Bool;
-                            var.value = false;
-                        }
-
-                        break;
-                    }
-
-                    default:
-                        break;
-                    }
-
-                    declareMode = false;
+                    Value varvalue = Evaluate(buffer, 0, buffer.size() - 1);
+                    var.value = varvalue;
+                    if(std::holds_alternative<int>(varvalue)){var.vartype = VariableTypes::Int;}
+                    if(std::holds_alternative<bool>(varvalue)){var.vartype = VariableTypes::Bool;}
+                    if(std::holds_alternative<std::string>(varvalue)){var.vartype = VariableTypes::String;}
+                    if(std::holds_alternative<double>(varvalue)){var.vartype = VariableTypes::Double;}
+                    buffer.clear();
+                }
+                else
+                {
+                    buffer.push_back(tok);
                 }
             }
-            if (tok.type == TokenType::Identifier)
+            else if (assignMode)
+            {
+                auto &var = variables[instr.vardata.name];
+                if (tok.type == TokenType::Equals)
+                {
+                    canContinue = true;
+                    continue;
+                }
+                else if (canContinue)
+                {
+                    if (tok.type == TokenType::Semicolon || tok.type == TokenType::NewLine)
+                    {
+                        if(!var.isStrict){
+                        var.value = Evaluate(buffer, 0, buffer.size() - 1);
+                        assignMode = false;
+                        buffer.clear();
+                        canContinue = false;
+                        }else{
+                           Value eval = Evaluate(buffer, 0, buffer.size() - 1);
+                           if(hold_same_type(eval,var.value)){
+                            var.value = eval;
+                            assignMode = false;
+                            buffer.clear();
+                            canContinue = false;
+                           }else{
+                                //handle exception here: cannot change the type of a strict variable.
+                           }
+                        }
+                            
+                        
+                    }
+                    else
+                    {
+                        buffer.push_back(tok);
+                    }
+                }
+            }
+            else if (tok.type == TokenType::Identifier)
             {
                 std::string name = std::get<std::string>(tok.value);
                 instr = Instruction{};
                 buildingInstr = true;
                 // this is for assignment   ex: x = 32 objective rn is to check if it is strict, if it is, do not allow type chancing. I FINALLY DID ITT
-                if (isInVariables(input[i]) && !variables[variantToString(input[i].value)].isConst)
+                if (isInVariables(tok) && !variables[variantToString(tok.value)].isConst)
                 {
-                    if (i + 2 >= input.size())
-                    {
-                        // Error: incomplete declaration do error handling here later
-                    }
-                    else if (input[i + 1].type != TokenType::Equals)
-                    {
-                        // Expected = do error handling here
-                    }
-                    else if (input[i + 2].type == TokenType::String || input[i + 2].type == TokenType::Number || (input[i + 2].type == TokenType::Identifier && variantToString(input[i + 2].value) == "true") || (input[i + 2].type == TokenType::Identifier && variantToString(input[i + 2].value) == "false"))
-                    {
-                        auto &var = variables[variantToString(input[i].value)];
-                        if (variables[variantToString(input[i].value)].isStrict == true)
-                        {
-                            std::cout << "strict \n";
-                            switch (input[i + 2].type)
-                            {
-                            case TokenType::String:
-                                if (variables[variantToString(input[i].value)].vartype == VariableTypes::String)
-                                    var.value = input[i + 2].value;
-                                instr.type = Instruction::Type::Assign;
-                                break;
-                            case TokenType::Number:
-                                if (std::holds_alternative<int>(input[i + 2].value) && variables[variantToString(input[i].value)].vartype == VariableTypes::Int)
-                                    var.value = input[i + 2].value;
-                                instr.type = Instruction::Type::Assign;
-                                break;
-                            case TokenType::Identifier:
-                                if (std::holds_alternative<bool>(input[i + 2].value) && variables[variantToString(input[i].value)].vartype == VariableTypes::Bool)
-                                    var.value = stringToBool(variantToString(input[i + 2].value));
-                                instr.type = Instruction::Type::Assign;
-                                break;
-                            }
-                        }
-                        else if (variables[variantToString(input[i].value)].isStrict == false)
-                        {
-                            instr.type = Instruction::Type::Assign;
-                            std::cout << "not strict \n";
-                            var.value = input[i + 2].value;
-                        }
-                    }
+                    instr.vardata.name = variantToString(tok.value);
+                    instr.vardata.isStrict = variables[variantToString(tok.value)].isStrict;
+                    assignMode = true;
                 }
                 if (name == "strict")
                 {
@@ -687,6 +693,12 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     instr.type = Instruction::Type::BuiltIn;
                     instr.builtin = CommandNames::Write;
                 }
+                else if (name == "if"){
+                    instr.type = Instruction::Type::If;
+                }
+                else if (name == "while"){
+                    instr.type = Instruction::Type::While;
+                }
                 else
                 {
                     instr.type = Instruction::Type::NonDefined;
@@ -696,47 +708,80 @@ std::vector<Instruction> parse(std::vector<Token> input)
             else if (tok.type == TokenType::LParen)
             {
                 argMode = true;
-                start = tok.column;
             }
-        }
+        }}
         else
         {
-            if (tok.type == TokenType::Comma)
+            if (tok.type == TokenType::LParen)
             {
+                Parandepth++;
+                buffer.push_back(tok);
+            }
+            else if (tok.type == TokenType::Comma && Parandepth == 0)
+            {
+                instr.args.push_back(Evaluate(buffer, 0, buffer.size() - 1));
+                buffer.clear();
                 continue;
             }
             else if (tok.type == TokenType::RParen)
             {
-                argMode = false;
-                
-                if (buildingInstr)
+                if (Parandepth > 0)
                 {
-                    instructions.push_back(instr);
-                    buildingInstr = false;
-                }
-            }
-            else if (tok.type == TokenType::Identifier)
-            {
-                auto it = variables.find(variantToString(tok.value));
-                std::cout << "start:" << start << "\n";
-                std::cout << "end: "<< end << "\n";
-                if (it != variables.end())
-                {
-                    instr.args.push_back(it->second.value);
+                    Parandepth--;
+                    buffer.push_back(tok);
                 }
                 else
                 {
-                    // handle undefined identifier here
-                    instr.args.push_back(tok.value);
-                    continue;
+                    argMode = false;
+                    if(instr.type == Instruction::Type::If && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == true){
+                        std::cout << "you are goddamn right \n";
+                        canExecute = true;
+                    }else if (instr.type == Instruction::Type::If && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == false){
+                        std::cout << "you are goddamn wrong \n";
+                        canExecute = false;
+                        if(tok.type == TokenType::LCurl){Curlydepth++;}
+                        else if(tok.type == TokenType::RCurl){
+                            
+                            if(Curlydepth > 0){Curlydepth--;}else{
+                                canExecute = true;
+                            }
+                        }
+                    }
+                    else if(instr.type == Instruction::Type::While && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == true){
+                        std::cout << "you are goddamn right \n";
+                        canExecute = true;
+                    }else if (instr.type == Instruction::Type::While && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == false){
+                        std::cout << "you are goddamn wrong \n";
+                        canExecute = false;
+                        
+                        if(tok.type == TokenType::LCurl){Curlydepth++;}
+                        else if(tok.type == TokenType::RCurl){
+                            
+                            if(Curlydepth > 0){Curlydepth--;}else{
+                                canExecute = true;
+                            }
+                        }
+                    }
+                    else{
+                    instr.args.push_back(Evaluate(buffer, 0, buffer.size() - 1));}
+                    buffer.clear();
+                    if (buildingInstr)
+                    {
+                        instructions.push_back(instr);
+                        buildingInstr = false;
+                    }
+                }
+
+                for (int k = 0; k < buffer.size(); k++)
+                {
+                    std::cout << variantToString(buffer[k].value) << "\n";
                 }
             }
             else
             {
-                instr.args.push_back(tok.value);
+                buffer.push_back(tok);
             }
         }
     }
-
     return instructions;
 }
