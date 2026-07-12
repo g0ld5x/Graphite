@@ -23,7 +23,11 @@
 //basically the parsers job is to "simplify" the lexers input as much as possible.
 
 
-//this is here because some operators group with left associativity. ex:  2^3^2 is equal to 512 because it groupes as 2^(3^2). but if you dont implement associavity it groupes as (2^3)^2 which gives the result of 64 which is uncorrect
+
+//this is here because some operators group with left associativity. ex:  2^3^2 is equal to 512 because it groupes as 2^(3^2).
+// but if you dont implement associavity it groupes as (2^3)^2 which gives the result of 64 which is uncorrect
+
+
 enum class Associativity
 {
     Left,
@@ -32,8 +36,8 @@ enum class Associativity
 
 //these are default VOID commands.
 enum class CommandNames{
-    WriteLn,
-    Write,
+    Print,
+    PrintLn,
     Free
 };
 
@@ -44,6 +48,7 @@ enum class VariableTypes{
     Bool
 };
 
+
 struct VariableData {
     std::string name;
     Value value;
@@ -51,41 +56,49 @@ struct VariableData {
     bool isStrict;
     VariableTypes vartype;
 };
-using VariableTable = std::unordered_map<std::string, VariableData>;
 
-
-struct Instruction {
-        enum class Type {
-        BuiltIn,
-        UserDefined,
-        NonDefined,
+struct Instruction
+{
+    enum class Types{
         If,
         While,
         For,
         Declare,
-        Assign
-    }; 
-    Type type;
-    bool isVoid;
-    VariableTypes returnType;
-    CommandNames builtin;     // valid if BuiltIn
+        Assign,
+        FunctionDeclare,
+        FunctionCall,
+        Command
+    };
+    Types type;
+    std::vector<std::string> path;
+
     VariableData vardata;
 
-    std::vector<Instruction> body; //for if conditions that require runtime variables, for and while loops
-    std::vector<Token> condition; //for if conditions that require runtime variables, for and while loops
+    std::vector<Token> expression;
+    std::vector<std::vector<Token>> arguments;
 
-    std::vector<Value> args;
+    std::vector<Token> condition;
+
+    std::vector<Instruction> body;
 };
+using VariableTable = std::unordered_map<std::string, VariableData>;
 
-struct Function { //for usermade functions
+struct Function
+{
     std::string name;
+
+    VariableTable locals;
+
+    std::vector<Instruction> body;
+
+    bool isStrict;
     bool isVoid;
-    bool isStrict; //does the function allow returns with type inferring, ex:  strict fn hi(){ if(condition){return "hi";} return 2;} will give an error. but fn hello(){if(condition){return "hi"} return 3;} will not.
-    VariableTypes returnType;
-    Value returnVal;
-    std::vector<Instruction> instructions;
 };
+
+using FunctionTable = std::unordered_map<std::string, Function>;
+
+
 std::vector<Instruction> parse(std::vector<Token>);
 
-Value Evaluate(const std::vector<Token>& tokens, int left, int right);
+Value Evaluate(const std::vector<Token>& tokens, int left, int right,VariableTable);
 #endif

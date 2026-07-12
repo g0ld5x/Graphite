@@ -40,7 +40,9 @@ enum class TokenType
     Equals = '=',     //=
     EndOfFile = 'E',  // self-explanatory
     NewLine = '|',
-    Error = '!'       // if an error happens
+    Error = '!',
+    True,
+    False       // if an error happens
 };
 
 struct Token

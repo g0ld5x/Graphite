@@ -15,9 +15,9 @@
 
 // integrate unordered map plsss!!!!! i did bro no worries (me)
 
-
-bool hold_same_type(const Value& v1, const Value& v2) {
-    //if the indices are equal, the active types are the same
+bool hold_same_type(const Value &v1, const Value &v2)
+{
+    // if the indices are equal, the active types are the same
     return v1.index() == v2.index();
 }
 
@@ -29,8 +29,6 @@ bool stringToBool(const std::string &str)
         return false;
     return false;
 }
-
-VariableTable variables;
 
 double variantToDouble(const Value &value)
 {
@@ -138,6 +136,15 @@ int precedence(TokenType type)
     }
 }
 
+std::string variantToString(const Value &a)
+{
+    return std::visit([](const auto &arg) -> std::string
+                      {
+                        std::ostringstream oss;
+                        oss << arg;
+                        return oss.str(); }, a);
+}
+
 bool isUnary(const std::vector<Token> &tokens, int index)
 {
     TokenType t = tokens[index].type;
@@ -165,16 +172,7 @@ bool isUnary(const std::vector<Token> &tokens, int index)
            precedence(prev) != -1;
 }
 
-std::string variantToString(const Value &a)
-{
-    return std::visit([](const auto &arg) -> std::string
-                      {
-                        std::ostringstream oss;
-                        oss << arg;
-                        return oss.str(); }, a);
-}
-
-bool isInVariables(Token tok)
+bool isInVariables(Token tok, VariableTable variables)
 {
     auto it = variables.find(variantToString(tok.value));
     if (it != variables.end())
@@ -212,14 +210,15 @@ bool variantToBool(const Value &value)
     }
     else
     {
-        std::cout<<"bad";
+        std::cout << "bad";
         return false;
-        //handle error here
+        // handle error here
     }
 }
 
-Value Evaluate(const std::vector<Token> &tokens, int left, int right)
+Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTable variables)
 {
+    // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
     variables["pi"] = {
         "pi",
         M_PI,
@@ -300,7 +299,7 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right)
     // Prefix unary operators
     if (isUnary(tokens, left))
     {
-        Value rhs = Evaluate(tokens, left + 1, right);
+        Value rhs = Evaluate(tokens, left + 1, right, variables);
 
         switch (tokens[left].type)
         {
@@ -364,8 +363,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right)
     if (split == -1)
         throw std::runtime_error("No operator found.");
 
-    Value lhs = Evaluate(tokens, left, split - 1);
-    Value rhs = Evaluate(tokens, split + 1, right);
+    Value lhs = Evaluate(tokens, left, split - 1, variables);
+    Value rhs = Evaluate(tokens, split + 1, right, variables);
     switch (tokens[split].type)
     {
 
@@ -520,267 +519,101 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right)
 std::vector<Instruction> parse(std::vector<Token> input)
 {
     std::vector<Instruction> instructions;
-
     Instruction instr;
+    bool buildingInside = false;
     bool strictMode = false;
-
-    bool buildingInstr = false;
-
-    int canExecute = true; //for if,while,for statements
-    bool canContinue = false; //for decleration and assignment
-
-    int Parandepth = 0;
-    int Curlydepth = 0;
-
-    bool argMode = false;
-    std::vector<Token> buffer;
-    std::vector<Instruction> instrbuffer;
-    bool declareMode = false;
-    bool assignMode = false;
-    for (size_t i = 0; i < input.size(); i++)
+    for (int i = 0; i < input.size(); i++)
     {
-        const Token &tok = input[i];
-        if (!argMode)
+        Instruction instr;
+        Token tok = input[i];
+        std::string value = variantToString(tok.value);
+        if (!buildingInside)
         {
-            if(canExecute && !argMode){
-            if (declareMode)
+            if (tok.type == TokenType::NewLine || tok.type == TokenType::Semicolon)
             {
-                if (tok.type == TokenType::NewLine || tok.type == TokenType::Semicolon)
-                {
-                    auto &var = variables[instr.vardata.name];
-                    declareMode = !declareMode;
-                    var.name = instr.vardata.name;
-                    var.isConst = instr.vardata.isConst;
-                    var.isStrict = instr.vardata.isStrict;
-                    Value varvalue = Evaluate(buffer, 0, buffer.size() - 1);
-                    var.value = varvalue;
-                    if(std::holds_alternative<int>(varvalue)){var.vartype = VariableTypes::Int;}
-                    if(std::holds_alternative<bool>(varvalue)){var.vartype = VariableTypes::Bool;}
-                    if(std::holds_alternative<std::string>(varvalue)){var.vartype = VariableTypes::String;}
-                    if(std::holds_alternative<double>(varvalue)){var.vartype = VariableTypes::Double;}
-                    buffer.clear();
-                }
-                else
-                {
-                    buffer.push_back(tok);
-                }
-            }
-            else if (assignMode)
-            {
-                auto &var = variables[instr.vardata.name];
-                if (tok.type == TokenType::Equals)
-                {
-                    canContinue = true;
-                    continue;
-                }
-                else if (canContinue)
-                {
-                    if (tok.type == TokenType::Semicolon || tok.type == TokenType::NewLine)
-                    {
-                        if(!var.isStrict){
-                        var.value = Evaluate(buffer, 0, buffer.size() - 1);
-                        assignMode = false;
-                        buffer.clear();
-                        canContinue = false;
-                        }else{
-                           Value eval = Evaluate(buffer, 0, buffer.size() - 1);
-                           if(hold_same_type(eval,var.value)){
-                            var.value = eval;
-                            assignMode = false;
-                            buffer.clear();
-                            canContinue = false;
-                           }else{
-                                //handle exception here: cannot change the type of a strict variable.
-                           }
-                        }
-                            
-                        
-                    }
-                    else
-                    {
-                        buffer.push_back(tok);
-                    }
-                }
+                continue;
+                
             }
             else if (tok.type == TokenType::Identifier)
             {
-                std::string name = std::get<std::string>(tok.value);
-                instr = Instruction{};
-                buildingInstr = true;
-                // this is for assignment   ex: x = 32 objective rn is to check if it is strict, if it is, do not allow type chancing. I FINALLY DID ITT
-                if (isInVariables(tok) && !variables[variantToString(tok.value)].isConst)
-                {
-                    instr.vardata.name = variantToString(tok.value);
-                    instr.vardata.isStrict = variables[variantToString(tok.value)].isStrict;
-                    assignMode = true;
-                }
-                if (name == "strict")
-                {
-                    strictMode = true;
-                }
-                if (name == "var")
-                {
-                    if (i + 2 >= input.size())
-                    {
-                        // Error: incomplete declaration do error handling here later
-                    }
-                    else if (input[i + 1].type != TokenType::Identifier)
-                    {
-                        // Error: expected variable name do error handling here lter
-                    }
-                    else if (input[i + 2].type != TokenType::Equals)
-                    {
-                        // Error: expected '=' do error handling here later
-                    }
-                    else
-                    {
-                        auto &var = variables[instr.vardata.name];
-                        instr.vardata.isConst = false;
-                        instr.vardata.isStrict = strictMode;
-                        var.isConst = false;
-                        var.isStrict = strictMode;
-                        std::cout << variantToString(input[i + 1].value);
-                        instr.type = Instruction::Type::Declare;
-                        instr.vardata.name = variantToString(input[i + 1].value);
-                        declareMode = true;
-                        strictMode = false;
-                        // here i skip the identifier and '=' since they are already processed. its NOT 5 am rn ):
-                        i += 2;
-                    }
-                }
-                else if (name == "const")
-                {
-                    if (i + 2 >= input.size())
-                    {
-                        // Error: incomplete declaration, do error handling here later
-                    }
-                    else if (input[i + 1].type != TokenType::Identifier)
-                    {
-                        // Error: expected variable name, do error handling here lter
-                    }
-                    else if (input[i + 2].type != TokenType::Equals)
-                    {
-                        // Error: expected '=' do error handling here later
-                    }
-                    else
-                    {
-                        auto &var = variables[instr.vardata.name];
-                        instr.vardata.isConst = true;
-                        instr.vardata.isStrict = strictMode;
-                        var.isConst = true;
-                        var.isStrict = strictMode;
-                        std::cout << variantToString(input[i + 1].value);
-                        instr.type = Instruction::Type::Declare;
-                        instr.vardata.name = variantToString(input[i + 1].value);
-                        declareMode = true;
-                        strictMode = false;
-                        // here i skip the identifier and '=' since they are already processed. its NOT 5 am rn ):
-                        i += 2;
-                    }
-                }
-                else if (name == "writeln")
-                {
-                    instr.type = Instruction::Type::BuiltIn;
-                    instr.builtin = CommandNames::WriteLn;
-                }
-                else if (name == "free")
-                { // used to free variables from memory
-                    instr.type = Instruction::Type::BuiltIn;
-                    instr.builtin = CommandNames::Free;
-                }
-                else if (name == "write")
-                {
-                    instr.type = Instruction::Type::BuiltIn;
-                    instr.builtin = CommandNames::Write;
-                }
-                else if (name == "if"){
-                    instr.type = Instruction::Type::If;
-                }
-                else if (name == "while"){
-                    instr.type = Instruction::Type::While;
-                }
-                else
-                {
-                    instr.type = Instruction::Type::NonDefined;
+
+                if(i+1 < input.size() && input[i+1].type == TokenType::Equals){
+                    instr.type = Instruction::Types::Assign;
+                    instr.vardata.name = variantToString(input[i].value);
+                    while(i + 2 < input.size() && input[i+2].type != TokenType::NewLine && input[i+2].type != TokenType::Semicolon){
+                        i++;
+                        instr.expression.push_back(input[i+2]);
+                     }
                     instructions.push_back(instr);
                 }
+                if (value == "strict"){
+                    strictMode = true;
+                }
+                else if(value == "var"){
+                    std::cout << "a \n";
+                    instr.type = Instruction::Types::Declare;
+                    instr.vardata.isStrict = strictMode;
+                    if(i+1 < input.size() && input[i+1].type == TokenType::Identifier){
+                        instr.vardata.name = variantToString(input[i+1].value);
+                        if(i+2 < input.size() && input[i+2].type == TokenType::Equals){
+                            while(i + 2 < input.size() && input[i+2].type != TokenType::NewLine && input[i+2].type != TokenType::Semicolon){
+                                i++;
+                                instr.expression.push_back(input[i+2]);
+                            }
+                        }
+                        else{
+                            throw std::runtime_error("Expected '='.");
+                        }
+                            
+                    }else{
+                        throw std::runtime_error("Variable name not defined.");
+                    }
+                instructions.push_back(instr);
+                }
+                while (i < input.size() &&
+                    input[i].type == TokenType::Identifier)
+                {
+                    instr.path.push_back(variantToString(input[i].value));
+
+                    if (i + 1 < input.size() &&
+                        input[i + 1].type == TokenType::Dot)
+                    {
+                        i += 2;
+                        continue;
+                    }
+                    instructions.push_back(instr);
+                    break;
+                }
             }
+
             else if (tok.type == TokenType::LParen)
             {
-                argMode = true;
+                buildingInside = true;
             }
-        }}
+        }
         else
         {
-            if (tok.type == TokenType::LParen)
-            {
-                Parandepth++;
-                buffer.push_back(tok);
-            }
-            else if (tok.type == TokenType::Comma && Parandepth == 0)
-            {
-                instr.args.push_back(Evaluate(buffer, 0, buffer.size() - 1));
-                buffer.clear();
-                continue;
-            }
-            else if (tok.type == TokenType::RParen)
-            {
-                if (Parandepth > 0)
-                {
-                    Parandepth--;
-                    buffer.push_back(tok);
-                }
-                else
-                {
-                    argMode = false;
-                    if(instr.type == Instruction::Type::If && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == true){
-                        std::cout << "you are goddamn right \n";
-                        canExecute = true;
-                    }else if (instr.type == Instruction::Type::If && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == false){
-                        std::cout << "you are goddamn wrong \n";
-                        canExecute = false;
-                        if(tok.type == TokenType::LCurl){Curlydepth++;}
-                        else if(tok.type == TokenType::RCurl){
-                            
-                            if(Curlydepth > 0){Curlydepth--;}else{
-                                canExecute = true;
-                            }
-                        }
-                    }
-                    else if(instr.type == Instruction::Type::While && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == true){
-                        std::cout << "you are goddamn right \n";
-                        canExecute = true;
-                    }else if (instr.type == Instruction::Type::While && variantToBool(Evaluate(buffer, 0, buffer.size() - 1)) == false){
-                        std::cout << "you are goddamn wrong \n";
-                        canExecute = false;
-                        
-                        if(tok.type == TokenType::LCurl){Curlydepth++;}
-                        else if(tok.type == TokenType::RCurl){
-                            
-                            if(Curlydepth > 0){Curlydepth--;}else{
-                                canExecute = true;
-                            }
-                        }
-                    }
-                    else{
-                    instr.args.push_back(Evaluate(buffer, 0, buffer.size() - 1));}
-                    buffer.clear();
-                    if (buildingInstr)
-                    {
-                        instructions.push_back(instr);
-                        buildingInstr = false;
-                    }
-                }
+                int argCount = 0;
+                instr.arguments.clear();
+                instr.arguments.emplace_back();
 
-                for (int k = 0; k < buffer.size(); k++)
+                while (i < input.size() && input[i].type != TokenType::RParen)
                 {
-                    std::cout << variantToString(buffer[k].value) << "\n";
+                    Token tok = input[i];
+
+                    if (tok.type == TokenType::Comma)
+                    {
+                        argCount++;
+                        instr.arguments.emplace_back();
+                    }
+                    else
+                    {
+                        instr.arguments[argCount].push_back(tok);
+                    }
+                    i++;
                 }
-            }
-            else
-            {
-                buffer.push_back(tok);
-            }
+                instructions.push_back(instr);
+                buildingInside = false;
         }
     }
     return instructions;

@@ -24,6 +24,7 @@ std::vector<Token> lex(const std::string &input)
 {
     int line = 0;
     int column = 0;
+
     std::vector<Token> tokens;
     std::string buffer = "";
     std::string slashBuffer = "";
@@ -115,10 +116,27 @@ std::vector<Token> lex(const std::string &input)
             }
             else if (c == '/')
             {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Division;
-                tokens.push_back(token);
+                if (i + 1 < input.size() && input[i + 1] == '/')
+                {
+                    i += 2;
+                    while (i < input.size() && input[i] != '\n')
+                    {
+                        i++;
+                    }
+                    if (i < input.size() && input[i] == '\n')
+                    {
+                        line++;
+                        column = 1;
+                    }
+                }
+                else
+                {
+                    token.line = line;
+                    token.column = column;
+                    token.type = TokenType::Division;
+                    tokens.push_back(token);
+                    column++;
+                }
             }
             else if (c == '!')
             {
@@ -213,7 +231,8 @@ std::vector<Token> lex(const std::string &input)
                 token.type = TokenType::Dot;
                 tokens.push_back(token);
             }
-            else if (c == '&' && i + 1 < input.size() && input[i + 1] == '&') {
+            else if (c == '&' && i + 1 < input.size() && input[i + 1] == '&')
+            {
                 Token token;
                 token.line = line;
                 token.column = column;
@@ -223,7 +242,8 @@ std::vector<Token> lex(const std::string &input)
                 i++;
                 continue;
             }
-            else if (c == '|' && i + 1 < input.size() && input[i + 1] == '|') {
+            else if (c == '|' && i + 1 < input.size() && input[i + 1] == '|')
+            {
                 Token token;
                 token.line = line;
                 token.column = column;
@@ -250,16 +270,6 @@ std::vector<Token> lex(const std::string &input)
                 token.column = column;
                 token.type = TokenType::Remainder;
                 tokens.push_back(token);
-            }
-            else if (c == '#')
-            {
-                while (i < input.size() && input[i] != '\n')
-                {
-                    i++;
-                }
-
-                i--;
-                continue;
             }
             else if (std::isdigit(c))
             {
@@ -311,11 +321,49 @@ std::vector<Token> lex(const std::string &input)
                 }
 
                 i--;
-
-                Token token;
-                token.type = TokenType::Identifier;
-                token.value = value;
-                tokens.push_back(token);
+                if(value == "true"){
+                    Token token;
+                    token.value = true;
+                    token.type = TokenType::True;
+                    tokens.push_back(token);
+                }
+                if(value == "false"){
+                    Token token;
+                    token.value = false;
+                    token.type = TokenType::False;
+                    tokens.push_back(token);
+                }
+                if (value == "not")
+                {
+                    Token token;
+                    token.type = TokenType::Not;
+                    tokens.push_back(token);
+                }
+                else if (value == "and")
+                {
+                    Token token;
+                    token.type = TokenType::AndAnd;
+                    tokens.push_back(token);
+                }
+                else if (value == "or")
+                {
+                    Token token;
+                    token.type = TokenType::OrOr;
+                    tokens.push_back(token);
+                }
+                else if (value == "is")
+                {
+                    Token token;
+                    token.type = TokenType::EqualEqual;
+                    tokens.push_back(token);
+                }
+                else
+                {
+                    Token token;
+                    token.type = TokenType::Identifier;
+                    token.value = value;
+                    tokens.push_back(token);
+                }
             }
         }
         else

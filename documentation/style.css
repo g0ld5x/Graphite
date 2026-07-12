@@ -1,0 +1,87 @@
+@font-face {
+  font-family: Exo2;
+  src: url(Exo2-VariableFont_wght.ttf);
+}
+
+
+body{
+    background-color: #101010;
+    color:rgb(228, 249, 253);
+    font-family: Exo2;
+}
+
+.Name{
+    font-family: Exo2;
+    font-size: 4.5em;
+}
+
+.topnav {
+  background-color: #191919;;
+  font-family: Exo2;
+  font-weight: 500;
+  overflow: hidden;
+  display: flex;
+  border-radius: 40px; 
+  box-shadow: black 2px 2px 50px;
+  justify-content: center;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+/* Style the links inside the navigation bar */
+.topnav a {
+  float: left;
+  color: #f2f2f2;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+
+  font-size: 17px;
+    transition: background-color 0.2s ease, 
+              color 0.2s ease, 
+              transform 0.2s ease;
+}
+.topnav:hover{
+  box-shadow: rgb(0, 0, 0) 4px 4px 60px;
+}
+/* Change the color of links on hover */
+.topnav a:hover {
+    text-decoration: underline;
+}
+
+/* Add a color to the active/current link */
+.topnav a.active {
+  background-color: #191919;
+  color: rgb(228, 249, 253);
+}
+
+::selection {
+  background-color: rgb(228, 249, 253);; 
+  color: #101010;            
+}
+
+/* Gecko browsers (Firefox) */
+::-moz-selection {
+  background-color: rgb(228, 249, 253);;
+  color: #101010;
+}
+
+
+.textContainer{
+    background-color: #191919;
+  /* Clips the element perfectly into an iOS app icon shape */
+  clip-path: url(#apple-squircle); 
+  height: 600px;
+  width: 300px;
+      border-radius: 40px; 
+}
+
+.underline{
+    font-size: 20px;
+    font-weight: 400;
+    text-decoration: underline;
+}
+p{
+    padding: 15px;
+    font-size: 20px;
+    font-weight: 400;
+}
