@@ -1,1 +1,0 @@
-g++ lexer.cpp lexerdebug.cpp -o lexertester

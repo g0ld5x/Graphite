@@ -67,7 +67,8 @@ struct Instruction
         Assign,
         FunctionDeclare,
         FunctionCall,
-        Command
+        Command,
+        Return
     };
     Types type;
     std::vector<std::string> path;
@@ -93,7 +94,7 @@ struct Instruction
 };
 
 
-struct Function
+struct GFunction
 {
     std::string name;
 
@@ -105,7 +106,7 @@ struct Function
     bool isVoid;
 };
 
-using FunctionTable = std::unordered_map<std::string, Function>;
+using FunctionTable = std::unordered_map<std::string, GFunction>;
 
 
 std::vector<Instruction> parse(std::vector<Token>);

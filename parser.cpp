@@ -533,10 +533,10 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTa
 std::vector<Instruction> parse(std::vector<Token> input)
 {
     std::vector<Instruction> instructions;
-
+    bool strictMode = false;
     for (size_t i = 0; i < input.size(); i++)
     {
-        bool strictMode = false;
+        
         Instruction instr;
 
         Token tok = input[i];
@@ -623,6 +623,73 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 instructions.push_back(instr);
 
                 continue;
+            }
+            else if (value == "while")
+            {
+                instr.type = Instruction::Types::While;
+
+                int paranDepth = 0;
+                int curlyDepth = 0;
+
+                // Parse condition
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
+                {
+                    paranDepth++;
+                    i++;
+
+                    while (i + 1 < input.size() && paranDepth != 0)
+                    {
+                        i++;
+
+                        if (input[i].type == TokenType::LParen)
+                        {
+                            paranDepth++;
+                        }
+                        else if (input[i].type == TokenType::RParen)
+                        {
+                            paranDepth--;
+                            if (paranDepth == 0)
+                                break;
+                        }
+
+                        if (paranDepth != 0)
+                        {
+                            instr.condition.push_back(input[i]);
+                        }
+                    }
+                }
+
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::LCurl)
+                {
+                    curlyDepth++;
+                    i++;
+
+                    std::vector<Token> bodyTokens;
+
+                    while (i + 1 < input.size() && curlyDepth != 0)
+                    {
+                        i++;
+
+                        if (input[i].type == TokenType::LCurl)
+                        {
+                            curlyDepth++;
+                        }
+                        else if (input[i].type == TokenType::RCurl)
+                        {
+                            curlyDepth--;
+                            if (curlyDepth == 0)
+                                break;
+                        }
+
+                        if (curlyDepth != 0)
+                        {
+                            bodyTokens.push_back(input[i]);
+                        }
+                    }
+
+                    instr.body = parse(bodyTokens);
+                }
+                instructions.push_back(instr);
             }
             else if (value == "if")
             {
@@ -735,7 +802,6 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 bool canContinue = true;
                 instr.vardata.isConst = false;
                 instr.vardata.isStrict = strictMode;
-                strictMode = false;
                 instr.type = Instruction::Types::Declare;
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
@@ -758,9 +824,12 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     i++;
                 }
                 instructions.push_back(instr);
-                break;
+                strictMode = false;
             }
-
+            else if(value == "return"){
+                instr.type = Instruction::Types::Return;
+                instructions.push_back(instr);
+            }
             else if (value == "const")
             {
                 int paranDepth = 0;
@@ -790,20 +859,25 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     i++;
                 }
                 instructions.push_back(instr);
-                break;
             }
             else if (i + 1 < input.size() && input[i + 1].type == TokenType::Equals)
             {
-
                 instr.vardata.name = variantToString(input[i].value);
                 instr.type = Instruction::Types::Assign;
-                while (i + 2 < input.size() && (input[i + 2].type != TokenType::NewLine && input[i + 2].type != TokenType::Semicolon))
+
+                int j = i + 2;
+
+                while (j < input.size() &&
+                    input[j].type != TokenType::NewLine &&
+                    input[j].type != TokenType::Semicolon)
                 {
-                    instr.expression.push_back(input[i + 2]);
-                    i++;
+                    instr.expression.push_back(input[j]);
+                    j++;
                 }
+
+                i = j; // skip the whole expression
+
                 instructions.push_back(instr);
-                break;
             }
             else
             {
