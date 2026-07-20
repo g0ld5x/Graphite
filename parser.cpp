@@ -382,22 +382,36 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTa
         return variantToDouble(lhs) - variantToDouble(rhs);
 
     case TokenType::Multiply:
-        if (std::holds_alternative<std::string>(lhs) && std::holds_alternative<int>(rhs))
+        if (std::holds_alternative<std::string>(lhs) &&
+            std::holds_alternative<int>(rhs))
         {
-            std::string buffer = "";
-            for (int i = 0; i < variantToInt(rhs); i++)
+            const std::string &str = std::get<std::string>(lhs);
+            int count = std::get<int>(rhs);
+
+            std::string buffer;
+            buffer.reserve(str.size() * count);
+
+            for (int i = 0; i < count; ++i)
             {
-                buffer.append(variantToString(lhs));
+                buffer += str;
             }
+
             return buffer;
         }
-        else if (std::holds_alternative<int>(lhs) && std::holds_alternative<std::string>(rhs))
+        else if (std::holds_alternative<int>(lhs) &&
+                 std::holds_alternative<std::string>(rhs))
         {
-            std::string buffer = "";
-            for (int i = 0; i < variantToInt(lhs); i++)
+            const std::string &str = std::get<std::string>(rhs);
+            int count = std::get<int>(lhs);
+
+            std::string buffer;
+            buffer.reserve(str.size() * count);
+
+            for (int i = 0; i < count; ++i)
             {
-                buffer.append(variantToString(rhs));
+                buffer += str;
             }
+
             return buffer;
         }
         else
@@ -519,101 +533,344 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTa
 std::vector<Instruction> parse(std::vector<Token> input)
 {
     std::vector<Instruction> instructions;
-    Instruction instr;
-    bool buildingInside = false;
-    bool strictMode = false;
-    for (int i = 0; i < input.size(); i++)
+
+    for (size_t i = 0; i < input.size(); i++)
     {
+        bool strictMode = false;
         Instruction instr;
+
         Token tok = input[i];
         std::string value = variantToString(tok.value);
-        if (!buildingInside)
-        {
-            if (tok.type == TokenType::NewLine || tok.type == TokenType::Semicolon)
+        if (tok.type == TokenType::Identifier)
+        { // could be a function,if,for,while,fn,var,const,strict or a function call like Terminal.IO.print("hello world!");
+            if (value == "fn")
             {
-                continue;
-                
-            }
-            else if (tok.type == TokenType::Identifier)
-            {
+                instr.type = Instruction::Types::FunctionDeclare;
+                instr.isStrict = strictMode;
 
-                if(i+1 < input.size() && input[i+1].type == TokenType::Equals){
-                    instr.type = Instruction::Types::Assign;
-                    instr.vardata.name = variantToString(input[i].value);
-                    while(i + 2 < input.size() && input[i+2].type != TokenType::NewLine && input[i+2].type != TokenType::Semicolon){
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
+                {
+                    instr.Funcname = variantToString(input[i + 1].value);
+                    i++;
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
+                {
+                    i++;
+
+                    int paranDepth = 1;
+
+                    while (i + 1 < input.size() && paranDepth != 0)
+                    {
                         i++;
-                        instr.expression.push_back(input[i+2]);
-                     }
-                    instructions.push_back(instr);
+
+                        if (input[i].type == TokenType::LParen)
+                        {
+                            paranDepth++;
+                        }
+                        else if (input[i].type == TokenType::RParen)
+                        {
+                            paranDepth--;
+                        }
+                        else if (input[i].type == TokenType::Identifier)
+                        {
+                            instr.locals[variantToString(input[i].value)];
+                        }
+                    }
                 }
-                if (value == "strict"){
-                    strictMode = true;
+
+                while (i < input.size() && input[i].type != TokenType::LCurl)
+                {
+                    i++;
                 }
-                else if(value == "var"){
-                    std::cout << "a \n";
-                    instr.type = Instruction::Types::Declare;
-                    instr.vardata.isStrict = strictMode;
-                    if(i+1 < input.size() && input[i+1].type == TokenType::Identifier){
-                        instr.vardata.name = variantToString(input[i+1].value);
-                        if(i+2 < input.size() && input[i+2].type == TokenType::Equals){
-                            while(i + 2 < input.size() && input[i+2].type != TokenType::NewLine && input[i+2].type != TokenType::Semicolon){
-                                i++;
-                                instr.expression.push_back(input[i+2]);
+
+                if (i >= input.size())
+                {
+                    continue;
+                }
+
+                i++;
+
+                std::vector<Token> bodyTokens;
+
+                int curlyDepth = 1;
+
+                while (i < input.size() && curlyDepth > 0)
+                {
+                    if (input[i].type == TokenType::LCurl)
+                    {
+                        curlyDepth++;
+                    }
+                    else if (input[i].type == TokenType::RCurl)
+                    {
+                        curlyDepth--;
+                    }
+
+                    if (curlyDepth > 0)
+                    {
+                        bodyTokens.push_back(input[i]);
+                    }
+
+                    i++;
+                }
+
+                instr.body = parse(bodyTokens);
+
+                instructions.push_back(instr);
+
+                continue;
+            }
+            else if (value == "if")
+            {
+                instr.type = Instruction::Types::If;
+
+                int paranDepth = 0;
+                int curlyDepth = 0;
+
+                // Parse condition
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
+                {
+                    paranDepth++;
+                    i++;
+
+                    while (i + 1 < input.size() && paranDepth != 0)
+                    {
+                        i++;
+
+                        if (input[i].type == TokenType::LParen)
+                        {
+                            paranDepth++;
+                        }
+                        else if (input[i].type == TokenType::RParen)
+                        {
+                            paranDepth--;
+                            if (paranDepth == 0)
+                                break;
+                        }
+
+                        if (paranDepth != 0)
+                        {
+                            instr.condition.push_back(input[i]);
+                        }
+                    }
+                }
+
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::LCurl)
+                {
+                    curlyDepth++;
+                    i++;
+
+                    std::vector<Token> bodyTokens;
+
+                    while (i + 1 < input.size() && curlyDepth != 0)
+                    {
+                        i++;
+
+                        if (input[i].type == TokenType::LCurl)
+                        {
+                            curlyDepth++;
+                        }
+                        else if (input[i].type == TokenType::RCurl)
+                        {
+                            curlyDepth--;
+                            if (curlyDepth == 0)
+                                break;
+                        }
+
+                        if (curlyDepth != 0)
+                        {
+                            bodyTokens.push_back(input[i]);
+                        }
+                    }
+
+                    instr.body = parse(bodyTokens);
+                }
+                if (variantToString(input[i + 1].value) == "else")
+                {
+
+                    if (i + 2 < input.size() && input[i + 2].type == TokenType::LCurl)
+                    {
+                        curlyDepth++;
+                        i++;
+
+                        std::vector<Token> elsebodyTokens;
+
+                        while (i + 1 < input.size() && curlyDepth != 0)
+                        {
+                            i++;
+
+                            if (input[i].type == TokenType::LCurl)
+                            {
+                                curlyDepth++;
+                            }
+                            else if (input[i].type == TokenType::RCurl)
+                            {
+                                curlyDepth--;
+                                if (curlyDepth == 0)
+                                    break;
+                            }
+
+                            if (curlyDepth != 0)
+                            {
+                                elsebodyTokens.push_back(input[i]);
                             }
                         }
-                        else{
-                            throw std::runtime_error("Expected '='.");
-                        }
-                            
-                    }else{
-                        throw std::runtime_error("Variable name not defined.");
+
+                        instr.elseBody = parse(elsebodyTokens);
                     }
-                instructions.push_back(instr);
                 }
-                while (i < input.size() &&
-                    input[i].type == TokenType::Identifier)
+                instructions.push_back(instr);
+            }
+            else if (value == "strict")
+            {
+                strictMode = true;
+            }
+            else if (value == "var")
+            {
+                int paranDepth = 0;
+                bool canContinue = true;
+                instr.vardata.isConst = false;
+                instr.vardata.isStrict = strictMode;
+                strictMode = false;
+                instr.type = Instruction::Types::Declare;
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
+                {
+                    instr.vardata.name = variantToString(input[i + 1].value);
+                }
+                else
+                {
+                    canContinue = false;
+                }
+                if (i + 2 < input.size() && input[i + 2].type == TokenType::Equals && canContinue)
+                {
+                }
+                else
+                {
+                    canContinue = false;
+                }
+                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon))
+                {
+                    instr.expression.push_back(input[i + 3]);
+                    i++;
+                }
+                instructions.push_back(instr);
+                break;
+            }
+
+            else if (value == "const")
+            {
+                int paranDepth = 0;
+                bool canContinue = true;
+                instr.vardata.isConst = true;
+                instr.vardata.isStrict = strictMode;
+                strictMode = false;
+                instr.type = Instruction::Types::Declare;
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
+                {
+                    instr.vardata.name = variantToString(input[i + 1].value);
+                }
+                else
+                {
+                    canContinue = false;
+                }
+                if (i + 2 < input.size() && input[i + 2].type == TokenType::Equals && canContinue)
+                {
+                }
+                else
+                {
+                    canContinue = false;
+                }
+                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon))
+                {
+                    instr.expression.push_back(input[i + 3]);
+                    i++;
+                }
+                instructions.push_back(instr);
+                break;
+            }
+            else if (i + 1 < input.size() && input[i + 1].type == TokenType::Equals)
+            {
+
+                instr.vardata.name = variantToString(input[i].value);
+                instr.type = Instruction::Types::Assign;
+                while (i + 2 < input.size() && (input[i + 2].type != TokenType::NewLine && input[i + 2].type != TokenType::Semicolon))
+                {
+                    instr.expression.push_back(input[i + 2]);
+                    i++;
+                }
+                instructions.push_back(instr);
+                break;
+            }
+            else
+            {
+                instr.type = Instruction::Types::FunctionCall;
+                while (i < input.size() && input[i].type == TokenType::Identifier)
                 {
                     instr.path.push_back(variantToString(input[i].value));
-
-                    if (i + 1 < input.size() &&
-                        input[i + 1].type == TokenType::Dot)
+                    if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
                     {
                         i += 2;
                         continue;
                     }
-                    instructions.push_back(instr);
+                    else if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
+                    {
+                        int argCount = 0;
+                        int paranDepth = 0;
+                        paranDepth++;
+                        while (i + 1 < input.size() && paranDepth != 0)
+                        {
+                            i++;
+                            if (input[i + 1].type == TokenType::RParen)
+                            {
+                                paranDepth--;
+                                if (paranDepth != 0)
+                                {
+                                    if (instr.arguments.size() <= argCount)
+                                    {
+                                        instr.arguments.resize(argCount + 1);
+                                    }
+
+                                    instr.arguments[argCount].push_back(input[i + 1]);
+                                }
+                            }
+                            else if (input[i + 1].type == TokenType::Comma)
+                            {
+                                argCount++;
+                            }
+                            else if (input[i + 1].type == TokenType::LParen)
+                            {
+                                paranDepth++;
+                                if (paranDepth != 1)
+                                {
+                                    if (instr.arguments.size() <= argCount)
+                                    {
+                                        instr.arguments.resize(argCount + 1);
+                                    }
+
+                                    instr.arguments[argCount].push_back(input[i + 1]);
+                                }
+                            }
+                            else
+                            {
+                                // this is to ensure that arguments vector is large enough
+                                if (instr.arguments.size() <= argCount)
+                                {
+                                    instr.arguments.resize(argCount + 1);
+                                }
+
+                                // now it is safe to push back
+                                instr.arguments[argCount].push_back(input[i + 1]);
+                            }
+                        }
+                    }
                     break;
                 }
-            }
-
-            else if (tok.type == TokenType::LParen)
-            {
-                buildingInside = true;
-            }
-        }
-        else
-        {
-                int argCount = 0;
-                instr.arguments.clear();
-                instr.arguments.emplace_back();
-
-                while (i < input.size() && input[i].type != TokenType::RParen)
-                {
-                    Token tok = input[i];
-
-                    if (tok.type == TokenType::Comma)
-                    {
-                        argCount++;
-                        instr.arguments.emplace_back();
-                    }
-                    else
-                    {
-                        instr.arguments[argCount].push_back(tok);
-                    }
-                    i++;
-                }
                 instructions.push_back(instr);
-                buildingInside = false;
+            }
         }
     }
     return instructions;

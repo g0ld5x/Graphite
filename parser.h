@@ -56,7 +56,7 @@ struct VariableData {
     bool isStrict;
     VariableTypes vartype;
 };
-
+using VariableTable = std::unordered_map<std::string, VariableData>;
 struct Instruction
 {
     enum class Types{
@@ -74,14 +74,24 @@ struct Instruction
 
     VariableData vardata;
 
-    std::vector<Token> expression;
+    std::vector<Token> expression; //for vars before computing their values at runtime
     std::vector<std::vector<Token>> arguments;
 
     std::vector<Token> condition;
 
+    //for functions,if,else,while
     std::vector<Instruction> body;
+    //only for if
+    std::vector<Instruction> elseBody;
+    //for functions
+    std::string Funcname;
+
+    VariableTable locals;
+
+    bool isStrict;
+    bool isVoid;
 };
-using VariableTable = std::unordered_map<std::string, VariableData>;
+
 
 struct Function
 {
@@ -99,6 +109,7 @@ using FunctionTable = std::unordered_map<std::string, Function>;
 
 
 std::vector<Instruction> parse(std::vector<Token>);
+
 
 Value Evaluate(const std::vector<Token>& tokens, int left, int right,VariableTable);
 #endif

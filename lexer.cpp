@@ -321,18 +321,6 @@ std::vector<Token> lex(const std::string &input)
                 }
 
                 i--;
-                if(value == "true"){
-                    Token token;
-                    token.value = true;
-                    token.type = TokenType::True;
-                    tokens.push_back(token);
-                }
-                if(value == "false"){
-                    Token token;
-                    token.value = false;
-                    token.type = TokenType::False;
-                    tokens.push_back(token);
-                }
                 if (value == "not")
                 {
                     Token token;
