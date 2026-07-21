@@ -9,6 +9,7 @@
 #include "parser.h"
 #include "lexer.h"
 
+void initInterpreter(); //used to run things once without recursion to init the interpreter.
 
 bool interpret(const std::vector<Instruction>& input);
 #endif

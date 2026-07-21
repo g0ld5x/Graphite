@@ -6,6 +6,7 @@
 #include "interpreter.h"
 int main(int argc, char* argv[])
 {
+    initInterpreter();
     for (int i = 1; i < argc; i++)
     {
         std::string currentArg = argv[i];

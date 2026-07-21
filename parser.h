@@ -54,9 +54,11 @@ struct VariableData {
     Value value;
     bool isConst;
     bool isStrict;
+    bool isGlobal;
     VariableTypes vartype;
 };
 using VariableTable = std::unordered_map<std::string, VariableData>;
+using ScopeStack = std::vector<VariableTable>;
 struct Instruction
 {
     enum class Types{
@@ -112,5 +114,10 @@ using FunctionTable = std::unordered_map<std::string, GFunction>;
 std::vector<Instruction> parse(std::vector<Token>);
 
 
-Value Evaluate(const std::vector<Token>& tokens, int left, int right,VariableTable);
+Value Evaluate(
+    const std::vector<Token> &tokens,
+    int left,
+    int right,
+    ScopeStack& scope
+);
 #endif

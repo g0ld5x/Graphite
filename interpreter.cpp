@@ -51,9 +51,72 @@ bool isInFunctions(std::string name, FunctionTable functions)
     }
 }
 
-VariableTable GlobalTable;
-std::vector<VariableTable> LocalTable;
+ScopeStack scopeStack;
 FunctionTable GlobalFunctionTable;
+
+bool variableExists(std::string name)
+{
+    for (int i = scopeStack.size() - 1; i >= 0; i--)
+    {
+        if (scopeStack[i].find(name) != scopeStack[i].end())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+VariableData &getVariable(std::string name)
+{
+    for (int i = scopeStack.size() - 1; i >= 0; i--)
+    {
+        auto it = scopeStack[i].find(name);
+
+        if (it != scopeStack[i].end())
+        {
+            return it->second;
+        }
+    }
+
+    throw std::runtime_error("Unknown variable " + name);
+}
+
+void initInterpreter()
+{
+    scopeStack.push_back(VariableTable{}); // global scope
+    scopeStack[0]["pi"] = {
+        "pi",
+        M_PI,
+        true, // isConst
+        true, // isStrict
+        true,
+        VariableTypes::Double};
+
+    scopeStack[0]["e"] = {
+        "e",
+        M_E,
+        true, // isConst
+        true, // isStrict
+        true,
+        VariableTypes::Double};
+
+    scopeStack[0]["true"] = {
+        "true",
+        true,
+        true, // isConst
+        true, // isStrict
+        true,
+        VariableTypes::Bool};
+
+    scopeStack[0]["false"] = {
+        "false",
+        false,
+        true, // isConst
+        true, // isStrict
+        true,
+        VariableTypes::Bool};
+}
 bool interpret(const std::vector<Instruction> &input)
 {
     bool returned = false;
@@ -76,96 +139,130 @@ bool interpret(const std::vector<Instruction> &input)
         }
         else if (instr.type == Instruction::Types::Declare)
         { // for things like var x = 32;
-            Value value =  Evaluate(instr.expression, 0, instr.expression.size() - 1, GlobalTable);
-            if(std::holds_alternative<int>(value)){
+            Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack);
+            if (std::holds_alternative<int>(value))
+            {
                 instr.vardata.vartype = VariableTypes::Int;
             }
-            else if(std::holds_alternative<std::string>(value)){
-                instr.vardata.vartype =VariableTypes::String;
+            else if (std::holds_alternative<std::string>(value))
+            {
+                instr.vardata.vartype = VariableTypes::String;
             }
-            else if(std::holds_alternative<bool>(value)){
-                instr.vardata.vartype =VariableTypes::Bool;
+            else if (std::holds_alternative<bool>(value))
+            {
+                instr.vardata.vartype = VariableTypes::Bool;
             }
-            else if(std::holds_alternative<double>(value)){
+            else if (std::holds_alternative<double>(value))
+            {
                 instr.vardata.vartype = VariableTypes::Double;
             }
             instr.vardata.value = value;
-            GlobalTable[instr.vardata.name] = instr.vardata;
+            if (instr.vardata.isGlobal)
+            {
+                scopeStack.front()[instr.vardata.name] = instr.vardata;}
+            else
+            {
+                scopeStack.back()[instr.vardata.name] = instr.vardata;
+            }
         }
         else if (instr.type == Instruction::Types::Assign)
         { // for things like var x = 32;
-            VariableData &target = GlobalTable[instr.vardata.name];
+            VariableData &target = getVariable(instr.vardata.name);
             if (target.isConst)
             {
                 std::cerr << "Cant change the value of a constant. \n";
             }
             else
             {
-                
-                Value value =  Evaluate(instr.expression, 0, instr.expression.size() - 1, GlobalTable);
-                if(target.isStrict){
-                    if(std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int){
+
+                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack);
+                if (target.isStrict)
+                {
+                    if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
+                    {
                         target.value = value;
                     }
-                    else if(std::holds_alternative<std::string>(value) && instr.vardata.vartype == VariableTypes::String){
+                    else if (std::holds_alternative<std::string>(value) && instr.vardata.vartype == VariableTypes::String)
+                    {
                         target.value = value;
                     }
-                    else if(std::holds_alternative<double>(value) && instr.vardata.vartype == VariableTypes::Double){
+                    else if (std::holds_alternative<double>(value) && instr.vardata.vartype == VariableTypes::Double)
+                    {
                         target.value = value;
                     }
-                    else if(std::holds_alternative<bool>(value) && instr.vardata.vartype == VariableTypes::Bool){
+                    else if (std::holds_alternative<bool>(value) && instr.vardata.vartype == VariableTypes::Bool)
+                    {
                         target.value = value;
-                    }else{
+                    }
+                    else
+                    {
                         std::cerr << "Cannot change the type of a strict variable";
                     }
-                }else{
-                    GlobalTable[instr.vardata.name].value = value;
                 }
-                
-                
+                else
+                {
+                    getVariable(instr.vardata.name).value = value;
+                }
             }
         }
-        else if (instr.type == Instruction::Types::If)
+                else if (instr.type == Instruction::Types::If)
         {
-            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, GlobalTable)) == true)
+            scopeStack.push_back(VariableTable{});
+
+            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack)))
             {
                 bool result = interpret(instr.body);
 
                 if (result)
                 {
+                    scopeStack.pop_back();
                     return true;
                 }
             }
-            else if (instr.elseBody.size() != 0)
+            else if (!instr.elseBody.empty())
             {
-                bool Elseresult = interpret(instr.elseBody);
+                bool result = interpret(instr.elseBody);
 
-                if (Elseresult)
+                if (result)
                 {
+                    scopeStack.pop_back();
                     return true;
                 }
             }
+
+            scopeStack.pop_back();
         }
-        else if(instr.type == Instruction::Types::While){
-            while(variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, GlobalTable)) == true){
+        else if (instr.type == Instruction::Types::While)
+        {
+            scopeStack.push_back(VariableTable{});
+            while (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack)) == true)
+            {
                 bool result = interpret(instr.body);
 
                 if (result)
                 {
+                    scopeStack.pop_back();
                     return true;
                 }
             }
+            scopeStack.pop_back();
         }
         if (instr.type == Instruction::Types::FunctionCall)
         {
-            
-            if(instr.path[0] == "Int"){ //for casting Int(varname);
-                VariableData &target = GlobalTable[variantToString2(instr.arguments[0][0].value)];
-                if(target.isStrict){
+
+            if (instr.path[0] == "Int")
+            { // for casting Int(varname);
+                VariableData &target = getVariable(variantToString2(instr.arguments[0][0].value));
+                if (target.isStrict)
+                {
                     std::cerr << "Cannot cast strict variables";
-                }else{
-                    if(target.vartype != VariableTypes::Int){
-                    target.value = std::stoi(variantToString2(target.value));}
+                }
+                else
+                {
+                    if (target.vartype != VariableTypes::Int)
+                    {
+                        target.value = std::stoi(variantToString2(target.value));
+                    }
                     target.vartype = VariableTypes::Int;
                 }
             }
@@ -177,7 +274,7 @@ bool interpret(const std::vector<Instruction> &input)
                 }
                 for (int k = 0; k < instr.arguments.size(); k++)
                 {
-                    GlobalTable.erase(variantToString2(instr.arguments[k][0].value));
+                    scopeStack.back().erase(variantToString2(instr.arguments[k][0].value));
                 }
             }
             else if (instr.path[0] == "Terminal")
@@ -186,26 +283,35 @@ bool interpret(const std::vector<Instruction> &input)
                 {
                     if (instr.path[2] == "input")
                     {
-                        if(instr.arguments.size() == 0){
-                        std::string buffer = "";
-                        std::getline(std::cin, buffer);
-                        }else{
-                        VariableData &target = GlobalTable[variantToString2(instr.arguments[0][0].value)];
-                        if(!target.isConst){
-                        if(target.vartype == VariableTypes::String || !target.isStrict){
-                        std::string buffer = "";
-                        std::getline(std::cin, buffer);
-                        
-                        target.value = buffer;
-                        
-                        target.vartype = VariableTypes::String;
-                        }else{
-                            std::cerr << "Cannot change the type of a strict variable.";
+                        if (instr.arguments.size() == 0)
+                        {
+                            std::string buffer = "";
+                            std::getline(std::cin, buffer);
                         }
-                        }else{
-                            std::cerr << "Cannot change the value of a constant.";
-                    }
-                }
+                        else
+                        {
+                            VariableData &target = getVariable(variantToString2(instr.arguments[0][0].value));
+                            if (!target.isConst)
+                            {
+                                if (target.vartype == VariableTypes::String || !target.isStrict)
+                                {
+                                    std::string buffer = "";
+                                    std::getline(std::cin, buffer);
+
+                                    target.value = buffer;
+
+                                    target.vartype = VariableTypes::String;
+                                }
+                                else
+                                {
+                                    std::cerr << "Cannot change the type of a strict variable.";
+                                }
+                            }
+                            else
+                            {
+                                std::cerr << "Cannot change the value of a constant.";
+                            }
+                        }
                     }
                     else if (instr.path[2] == "print")
                     {
@@ -220,7 +326,7 @@ bool interpret(const std::vector<Instruction> &input)
                                 */
                         for (size_t k = 0; k < instr.arguments.size(); k++)
                         {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, GlobalTable));
+                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack));
                         }
                     }
                     else if (instr.path[2] == "println")
@@ -236,7 +342,7 @@ bool interpret(const std::vector<Instruction> &input)
                                 */
                         for (size_t k = 0; k < instr.arguments.size(); k++)
                         {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, GlobalTable));
+                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack));
                         }
                         std::cout << "\n";
                     }
@@ -263,7 +369,11 @@ bool interpret(const std::vector<Instruction> &input)
             }
             else if (isInFunctions(instr.path[0], GlobalFunctionTable))
             {
+                scopeStack.push_back(VariableTable{});
+
                 bool didReturn = interpret(GlobalFunctionTable[instr.path[0]].body);
+
+                scopeStack.pop_back();
 
                 if (didReturn)
                 {

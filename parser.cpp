@@ -185,6 +185,21 @@ bool isInVariables(Token tok, VariableTable variables)
     }
 }
 
+VariableData* getVariable(std::string name, ScopeStack& scopes)
+{
+    for(int i = scopes.size() - 1; i >= 0; i--)
+    {
+        auto it = scopes[i].find(name);
+
+        if(it != scopes[i].end())
+        {
+            return &it->second;
+        }
+    }
+
+    return nullptr;
+}
+
 bool isInVector(const std::vector<std::string> &vec, const std::string &target)
 {
     return std::find(vec.begin(), vec.end(), target) != vec.end();
@@ -216,56 +231,36 @@ bool variantToBool(const Value &value)
     }
 }
 
-Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTable variables)
+Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack& scope)
 {
     // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
-    variables["pi"] = {
-        "pi",
-        M_PI,
-        true, // isConst
-        true, // isStrict
-        VariableTypes::Double};
 
-    variables["e"] = {
-        "e",
-        M_E,
-        true, // isConst
-        true, // isStrict
-        VariableTypes::Double};
-
-    variables["true"] = {
-        "true",
-        true,
-        true, // isConst
-        true, // isStrict
-        VariableTypes::Bool};
-
-    variables["false"] = {
-        "false",
-        false,
-        true, // isConst
-        true, // isStrict
-        VariableTypes::Bool};
     // Invalid range
     if (left > right)
         throw std::runtime_error("Invalid expression.");
 
     // Single value
-    if (left == right)
+if (left == right)
+{
+    if (tokens[left].type == TokenType::Identifier)
     {
-        if (tokens[left].type == TokenType::Identifier)
+        VariableData* variable = getVariable(
+            variantToString(tokens[left].value),
+            scope
+        );
+
+        if(variable == nullptr)
         {
-            auto name = variantToString(tokens[left].value);
-
-            auto it = variables.find(name);
-            if (it == variables.end())
-                throw std::runtime_error("Undefined variable: " + name);
-
-            return it->second.value;
+            throw std::runtime_error(
+                "Unknown identifier " + variantToString(tokens[left].value)
+            );
         }
 
-        return tokens[left].value;
+        return variable->value;
     }
+
+    return tokens[left].value;
+}
 
     // Strip outer parentheses
     while (tokens[left].type == TokenType::LParen &&
@@ -299,7 +294,7 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTa
     // Prefix unary operators
     if (isUnary(tokens, left))
     {
-        Value rhs = Evaluate(tokens, left + 1, right, variables);
+        Value rhs = Evaluate(tokens, left + 1, right, scope);
 
         switch (tokens[left].type)
         {
@@ -363,8 +358,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, VariableTa
     if (split == -1)
         throw std::runtime_error("No operator found.");
 
-    Value lhs = Evaluate(tokens, left, split - 1, variables);
-    Value rhs = Evaluate(tokens, split + 1, right, variables);
+    Value lhs = Evaluate(tokens, left, split - 1, scope);
+    Value rhs = Evaluate(tokens, split + 1, right, scope);
     switch (tokens[split].type)
     {
 
@@ -534,6 +529,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
 {
     std::vector<Instruction> instructions;
     bool strictMode = false;
+    bool globalMode = false;
     for (size_t i = 0; i < input.size(); i++)
     {
         
@@ -796,12 +792,19 @@ std::vector<Instruction> parse(std::vector<Token> input)
             {
                 strictMode = true;
             }
+            else if (value == "global")
+            {
+                globalMode = true;
+            }
             else if (value == "var")
             {
                 int paranDepth = 0;
                 bool canContinue = true;
                 instr.vardata.isConst = false;
                 instr.vardata.isStrict = strictMode;
+                instr.vardata.isGlobal = globalMode;
+                strictMode = false;
+                globalMode = false;
                 instr.type = Instruction::Types::Declare;
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
@@ -824,7 +827,6 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     i++;
                 }
                 instructions.push_back(instr);
-                strictMode = false;
             }
             else if(value == "return"){
                 instr.type = Instruction::Types::Return;
@@ -836,7 +838,9 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 bool canContinue = true;
                 instr.vardata.isConst = true;
                 instr.vardata.isStrict = strictMode;
+                instr.vardata.isGlobal = globalMode;
                 strictMode = false;
+                globalMode = false;
                 instr.type = Instruction::Types::Declare;
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
