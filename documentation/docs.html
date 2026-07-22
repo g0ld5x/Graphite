@@ -10,7 +10,7 @@
     <div class="topnav">
     <a class="active" href="index.html">About</a>
     <a href="docs.html">Documentation</a>
-    <a href="#git">Github</a>
+    <a href="https://github.com/g0ld5x/Graphite" target="_blank">Github</a>
     </div>
     <center><h1 id="text" class="Name">Graphite</h1></center>
     <h2>1. Basics</h2>
@@ -29,18 +29,23 @@
     <p>You can either use semicolons or to seperate commands or you can just write it in the next line. Every block of code generates a new scope, but just curly parantheses {} wont generate a new scope. </p>
     <h2>8. Comments</h2>
     <p>You can make command using //. Ex: //this is a command!. Note: Multiline comments haven't been implemented yet but will be implemented.</p>
+    <h2>9. Parameters</h2>
+    <p>Parameters can now be used. The parameters type must be defined explicitly. Ex: fn test(string name){Terminal.IO.println(name);} test("John");</p>
 
     <center><h1>|Example Programs|</h1></center>
     <h2>Hello World:</h2>
+    <h3>HelloWorld.gh</h3>
     <p class="code">Terminal.IO.println("Hello World")</p>
     <h2>Take user input and print it:</h2>
+    <h3>PrintInput.gh</h3>
     <p class="code">Terminal.IO.print("Enter: ") <br>
     var input = ""; <br>
     Terminal.IO.input(input) <br>
     Terminal.IO.println("You entered: ",input)
     </p>
     <h2>A very basic calculator:</h2>
-    <p class="code">global var num1 = ""
+    <h3>Calculator.gh</h3>
+    <p class="code">global var num1 = "" <br>
 global var num2 = "" <br>
 global var operator = "" <br>
 while(true){
@@ -75,5 +80,13 @@ while(true){
     } <br>
     
 } <br></p>
+<br>
+
+<center><h1>How to interpret graphite code?</h1></center>
+<h2>REPL</h2>
+<p>To interpret graphite code, go to the <a href="https://github.com/g0ld5x/Graphite" target="_blank">graphite github page</a>. If you want to have a repl, compile using this command:</p> <p class="code"> g++ -Ofast -march=native -flto -fno-plt -fomit-frame-pointer lexer.cpp parser.cpp interpreter.cpp repl.cpp -o repl -lreadline </p> <p>In the repl, you can enter --debug to see execution times. If you want to close debug mode, type --debug again.</p>
+<br>
+<h2>Interpret whole files</h2>
+<p>To interpret whole files, use this command to compile the file interpreter: </p> <p class="code">g++ -Ofast -march=native -flto -fno-plt -fomit-frame-pointer lexer.cpp parser.cpp interpreter.cpp cliinterpret.cpp -o interpret</p> <p>Usage: ./interpret code.gh</p>
 </body>
 </html>
