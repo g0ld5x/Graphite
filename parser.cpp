@@ -185,13 +185,13 @@ bool isInVariables(Token tok, VariableTable variables)
     }
 }
 
-VariableData* getVariable(std::string name, ScopeStack& scopes)
+VariableData *getVariable(std::string name, ScopeStack &scopes)
 {
-    for(int i = scopes.size() - 1; i >= 0; i--)
+    for (int i = scopes.size() - 1; i >= 0; i--)
     {
         auto it = scopes[i].find(name);
 
-        if(it != scopes[i].end())
+        if (it != scopes[i].end())
         {
             return &it->second;
         }
@@ -231,7 +231,7 @@ bool variantToBool(const Value &value)
     }
 }
 
-Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack& scope)
+Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack &scope)
 {
     // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
 
@@ -240,27 +240,25 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         throw std::runtime_error("Invalid expression.");
 
     // Single value
-if (left == right)
-{
-    if (tokens[left].type == TokenType::Identifier)
+    if (left == right)
     {
-        VariableData* variable = getVariable(
-            variantToString(tokens[left].value),
-            scope
-        );
-
-        if(variable == nullptr)
+        if (tokens[left].type == TokenType::Identifier)
         {
-            throw std::runtime_error(
-                "Unknown identifier " + variantToString(tokens[left].value)
-            );
+            VariableData *variable = getVariable(
+                variantToString(tokens[left].value),
+                scope);
+
+            if (variable == nullptr)
+            {
+                throw std::runtime_error(
+                    "Unknown identifier in eval " + variantToString(tokens[left].value));
+            }
+
+            return variable->value;
         }
 
-        return variable->value;
+        return tokens[left].value;
     }
-
-    return tokens[left].value;
-}
 
     // Strip outer parentheses
     while (tokens[left].type == TokenType::LParen &&
@@ -370,7 +368,12 @@ if (left == right)
         }
         else
         {
-            return variantToDouble(lhs) + variantToDouble(rhs);
+            int intVal = variantToInt(lhs) + variantToInt(rhs);
+            int doubVal = variantToDouble(lhs) + variantToDouble(rhs);
+            if(intVal == doubVal){
+                return intVal;
+            }
+            return doubVal;
         }
 
     case TokenType::Minus:
@@ -532,7 +535,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
     bool globalMode = false;
     for (size_t i = 0; i < input.size(); i++)
     {
-        
+
         Instruction instr;
 
         Token tok = input[i];
@@ -559,6 +562,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     i++;
 
                     int paranDepth = 1;
+                    int slot = 0;
 
                     while (i + 1 < input.size() && paranDepth != 0)
                     {
@@ -567,15 +571,39 @@ std::vector<Instruction> parse(std::vector<Token> input)
                         if (input[i].type == TokenType::LParen)
                         {
                             paranDepth++;
+                            continue;
                         }
-                        else if (input[i].type == TokenType::RParen)
+
+                        if (input[i].type == TokenType::RParen)
                         {
                             paranDepth--;
+                            continue;
                         }
-                        else if (input[i].type == TokenType::Identifier)
+
+                        if (input[i].type == TokenType::Comma)
                         {
-                            instr.locals[variantToString(input[i].value)];
+                            slot++;
+                            continue;
                         }
+
+                        if (input[i].type != TokenType::Identifier)
+                            continue;
+
+                        if (instr.locals.size() <= slot)
+                            instr.locals.resize(slot + 1);
+
+                        std::string name = variantToString(input[i].value);
+
+                        if (name == "string")
+                            instr.locals[slot].vartype = VariableTypes::String;
+                        else if (name == "int")
+                            instr.locals[slot].vartype = VariableTypes::Int;
+                        else if (name == "bool")
+                            instr.locals[slot].vartype = VariableTypes::Bool;
+                        else if (name == "double")
+                            instr.locals[slot].vartype = VariableTypes::Double;
+                        else
+                            instr.locals[slot].name = name;
                     }
                 }
 
@@ -752,7 +780,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
 
                     instr.body = parse(bodyTokens);
                 }
-                if (variantToString(input[i + 1].value) == "else")
+                if (i + 1 < input.size() &&input[i + 1].type == TokenType::Identifier &&variantToString(input[i + 1].value) == "else")
                 {
 
                     if (i + 2 < input.size() && input[i + 2].type == TokenType::LCurl)
@@ -828,7 +856,8 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 }
                 instructions.push_back(instr);
             }
-            else if(value == "return"){
+            else if (value == "return")
+            {
                 instr.type = Instruction::Types::Return;
                 instructions.push_back(instr);
             }
@@ -872,8 +901,8 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 int j = i + 2;
 
                 while (j < input.size() &&
-                    input[j].type != TokenType::NewLine &&
-                    input[j].type != TokenType::Semicolon)
+                       input[j].type != TokenType::NewLine &&
+                       input[j].type != TokenType::Semicolon)
                 {
                     instr.expression.push_back(input[j]);
                     j++;

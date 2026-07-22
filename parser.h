@@ -9,24 +9,10 @@
 #include "lexer.h"
 
 
+//this is here because some operators group with left associativity. ex:  2^3^2 is equal to 512 because it groups as 2^(3^2).
+// but if you dont implement associavity it groups as (2^3)^2 which gives the result of 64 which is uncorrect
 
-//this parser has no ast tree, it basically solves an expression part by part until there is no precedence inequality left. then the interpreter can execute it in a straight line and still be correct. 
-
-//there is no tree structure, everything is in a straight line so for example its kinda like this for writeln(1+1):
-//Program-Command(writeln,Int(32))
-//or for this a = 32;
-//Declare(Name(a),Int(32))
-//another example c = a+2 connecting with previous example
-//becomes: Declare(Name(c),Int(34))
-//and then if you do c=3 that becomes:
-//Assign()
-//basically the parsers job is to "simplify" the lexers input as much as possible.
-
-
-
-//this is here because some operators group with left associativity. ex:  2^3^2 is equal to 512 because it groupes as 2^(3^2).
-// but if you dont implement associavity it groupes as (2^3)^2 which gives the result of 64 which is uncorrect
-
+//fn main(int a,string b,bool c,double d)
 
 enum class Associativity
 {
@@ -89,7 +75,7 @@ struct Instruction
     //for functions
     std::string Funcname;
 
-    VariableTable locals;
+    std::vector<VariableData> locals;
 
     bool isStrict;
     bool isVoid;
@@ -100,7 +86,7 @@ struct GFunction
 {
     std::string name;
 
-    VariableTable locals;
+    std::vector<VariableData> locals;
 
     std::vector<Instruction> body;
 

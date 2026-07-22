@@ -3,28 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graphite Documentation</title>
+    <title>Graphite|Home</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
 <body>
-          <path d="M 0,0.5 
-               C 0,0.15 0.15,0 0.5,0 
-               C 0.85,0 1,0.15 1,0.5 
-               C 1,0.85 0.85,1 0.5,1 
-               C 0.15,1 0,0.85 0,0.5 Z" />
-    </clipPath>
     <div class="topnav">
-    <a class="active" href="#home">About</a>
-    <a href="#docs">Documentation</a>
+    <a class="active" href="index.html">About</a>
+    <a href="docs.html">Documentation</a>
     <a href="#git">Github</a>
     </div>
     <center><h1 id="text" class="Name">Graphite</h1></center>
     <div class="textContainer">
         
-        <p>Grahite is a interpreter written entirely in C++. The language uses a <span class="underline">hybrid execution model.</span> Instead of constructing a complete AST (Abstract Syntax Tree) it parses the program into a linear sequence of instructions. And whenever an instruction contains an expression a temporary AST is generated and evaluated immediatly and then discarded, thus keeping the interpreting linear. In 'theory' this should result in less memory usage while still handling operator precedence correctly. The language is still in its early stages of development.</p>
+        <p class="textBox">Grahite is a interpreter written entirely in C++. The language uses a <span class="underline">hybrid execution model.</span> Instead of constructing a complete AST (Abstract Syntax Tree) it parses the program into a linear sequence of instructions. And whenever an instruction contains an expression a temporary AST is generated at runtime and after evaluation the tree gets discarded, only the value remains, thus keeping the interpreting linear. In 'theory' this should result in less memory usage while still handling operator precedence correctly. The language is still in its early stages of development.</p>
     </div>
 </body>
 </html>

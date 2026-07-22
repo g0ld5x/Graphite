@@ -6,11 +6,11 @@
 #include "chrono"
 #include "parser.h"
 #include "interpreter.h"
-
+//compile via g++ lexer.cpp parser.cpp interpreter.cpp repl.cpp -o repl -lreadline
 int main()
 {
     bool debugMode = false;
-
+    initInterpreter();
     while (true)
     {
         char* input = readline("graphite-<< ");
@@ -37,9 +37,8 @@ int main()
         auto start = std::chrono::high_resolution_clock::now();
 
         interpret(parse(lex(input)));
-
         auto end = std::chrono::high_resolution_clock::now();
-
+        std::cout << "\n";
         if(debugMode)
         {
             std::cout << "\n Execution Time: "

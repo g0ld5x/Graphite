@@ -266,6 +266,22 @@ bool interpret(const std::vector<Instruction> &input)
                     target.vartype = VariableTypes::Int;
                 }
             }
+            else if (instr.path[0] == "Double")
+            { // for casting Int(varname);
+                VariableData &target = getVariable(variantToString2(instr.arguments[0][0].value));
+                if (target.isStrict)
+                {
+                    std::cerr << "Cannot cast strict variables";
+                }
+                else
+                {
+                    if (target.vartype != VariableTypes::Double)
+                    {
+                        target.value = std::stod(variantToString2(target.value));
+                    }
+                    target.vartype = VariableTypes::Double;
+                }
+            }
             else if (instr.path[0] == "free")
             {
                 if (instr.arguments.size() == 0)
@@ -369,9 +385,31 @@ bool interpret(const std::vector<Instruction> &input)
             }
             else if (isInFunctions(instr.path[0], GlobalFunctionTable))
             {
-                scopeStack.push_back(VariableTable{});
+                auto targetFunc = GlobalFunctionTable[instr.path[0]];
+                size_t count = std::min(instr.arguments.size(), targetFunc.locals.size());
+                if (instr.arguments.size() != targetFunc.locals.size())
+{
+                std::cout << "Error: function " << instr.path[0]
+                        << " expected "
+                        << targetFunc.locals.size()
+                        << " arguments but got "
+                        << instr.arguments.size()
+                        << "\n";
 
-                bool didReturn = interpret(GlobalFunctionTable[instr.path[0]].body);
+                return true;
+            }
+                for(int k = 0; k < count;k++){
+                    targetFunc.locals[k].value = Evaluate(instr.arguments[k],0,instr.arguments[k].size()-1,scopeStack);
+                }
+                VariableTable bufferTable;
+                
+                for (const auto& var : targetFunc.locals)
+                {
+                    
+                    bufferTable[var.name] = var;
+                }
+                scopeStack.push_back(bufferTable);
+                bool didReturn = interpret(targetFunc.body);
 
                 scopeStack.pop_back();
 

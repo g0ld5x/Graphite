@@ -1,0 +1,13 @@
+fn fib(int n)
+{
+    if(n <= 1)
+    {
+        Terminal.IO.println(n);
+    }else
+    {
+        fib(n - 1);
+        fib(n - 2);
+    }
+}
+
+fib(10);

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphite|Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="topnav">
+    <a class="active" href="index.html">About</a>
+    <a href="docs.html">Documentation</a>
+    <a href="#git">Github</a>
+    </div>
+    <center><h1 id="text" class="Name">Graphite</h1></center>
+    <h2>1. Basics</h2>
+    <p>In graphite variables are declared via the var keyword. Ex: var x = 3; if you want to make the variables type non changeable. Use the strict keyword. Ex: strict var y = "hello"; y = 3 will give an error because 3 and "hello" are not of the same type. if you want to make a variable global. use the global keyword. if(1==1){global strict var x = 0;} Terminal.IO.println(x); will work because the global keyword was used. There are 4 main data types: Int,String,Double,Bool. If you want to free up variables for some reason, use the free(varname). You can use the const keyword to create a constant. The global and strict keyword can also be used before const.</p>
+    <h2>2. Input/Output</h2>
+    <p>To output text into the terminal, use the command Terminal.IO.print() or Terminal.IO.println() to make a newline after the text. You can put as much arguments as you want in Terminal.IO.print() or Terminal.IO.println(), it will print it out. for taking user input, use Terminal.IO.input(varname) where varname is the name of the variable you want the input to be assigned to. To clear the terminal use the Terminal.clear(), clear doesnt accept any arguments.</p>
+    <h2>3. Functions</h2>
+    <p>To create a function use the fn keyword. Ex: fn test(){Terminal.IO.println("test");} Graphite supports recursion. So you can call functions from inside. Use the global keyword before var if creating a variable in a function,if,else,while and you want it to be accesible from outside.</p>
+    <h2>4. If Else</h2>
+    <p>To create a if statement, use the if keyword followed by the condition inside parantheses. Ex: if(x==y){Terminal.IO.print("x is equal to y.")}  The else keyword can only be used after a if statement. The statements inside else only happen if the condition of the if statement is false. Ex: if(2==1){Terminal.IO.println("Correct")}else{Terminal.IO.println}</p>
+    <h2>5. Operators</h2>
+    <p>Comparison operators: is,==,<,>,<=,>=,!= (is and == have the same meaning). Logical operators: ||,&&,and,or (||=or,&&=and). Unary operators: !,-,+ (in some conditions the - and + are unary). Binary Operators: +,-,*,/,^ .</p>
+    <h2>6. Casting</h2>
+    <p>You can cast to int using Int(varname). You can cast to a double value using Double(varname). If you want to cast to a string, just do this. var x = 3; x = ""+3;</p>
+    <h2>7. Syntax</h2>
+    <p>You can either use semicolons or to seperate commands or you can just write it in the next line. Every block of code generates a new scope, but just curly parantheses {} wont generate a new scope. </p>
+    <h2>8. Comments</h2>
+    <p>You can make command using //. Ex: //this is a command!. Note: Multiline comments haven't been implemented yet but will be implemented.</p>
+
+    <center><h1>|Example Programs|</h1></center>
+    <h2>Hello World:</h2>
+    <p class="code">Terminal.IO.println("Hello World")</p>
+    <h2>Take user input and print it:</h2>
+    <p class="code">Terminal.IO.print("Enter: ") <br>
+    var input = ""; <br>
+    Terminal.IO.input(input) <br>
+    Terminal.IO.println("You entered: ",input)
+    </p>
+    <h2>A very basic calculator:</h2>
+    <p class="code">global var num1 = ""
+global var num2 = "" <br>
+global var operator = "" <br>
+while(true){
+
+    Terminal.IO.print("Enter Number 1 (type -q to quit):") <br>
+    Terminal.IO.input(num1) <br>
+    if(num1 is "-q"){<br>
+        return<br>
+    } <br>
+    Terminal.IO.print("Enter Number 2 (type -q to quit):")<br>
+    Terminal.IO.input(num2)<br>
+    if(num2 is "-q"){<br>
+        return<br>
+    } <br>
+    Double(num1)<br>
+    Double(num2)<br>
+
+    Terminal.IO.print("Enter operator (*,/,+,-): ")<br>
+    Terminal.IO.input(operator)<br>
+    Terminal.IO.println("")<br>
+    if(operator is "+"){<br>
+        Terminal.IO.println(num1,operator,num2,"=",num1+num2)<br>
+    } <br>
+    if(operator is "-"){ <br>
+        Terminal.IO.println(num1,operator,num2,"=",num1-num2) <br>
+    } <br>
+    if(operator is "/"){ <br>
+        Terminal.IO.println(num1,operator,num2,"=",num1/num2) <br>
+    }<br>
+    if(operator is "*"){<br>
+        Terminal.IO.println(num1,operator,num2,"=",num1*num2)<br>
+    } <br>
+    
+} <br></p>
+</body>
+</html>
