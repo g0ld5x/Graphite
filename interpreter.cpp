@@ -51,6 +51,30 @@ bool isInFunctions(std::string name, FunctionTable functions)
     }
 }
 
+std::string join(const std::vector<std::string> &elements, const std::string &delimiter)
+{
+    if (elements.empty())
+        return "";
+
+    // Calculate total length to allocate memory at once
+    size_t total_length = 0;
+    for (const auto &s : elements)
+        total_length += s.length();
+    total_length += delimiter.length() * (elements.size() - 1);
+
+    std::string result;
+    result.reserve(total_length);
+
+    // Join elements
+    result += elements[0];
+    for (size_t i = 1; i < elements.size(); ++i)
+    {
+        result += delimiter + elements[i];
+    }
+
+    return result;
+}
+
 FunctionTable GlobalFunctionTable;
 
 bool variableExists(std::string name, ScopeStack &scope)
@@ -131,6 +155,10 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             func.name = instr.Funcname;
             func.locals = instr.locals;
             func.isVoid = true;
+        }
+        else if (instr.type == Instruction::Types::Space)
+        {
+            interpret(instr.body, scope);
         }
         else if (instr.type == Instruction::Types::Return)
         {
@@ -273,9 +301,13 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     return result;
             }
         }
+
         else if (instr.type == Instruction::Types::FunctionCall)
         {
-            if (instr.path[0] == "Int")
+
+            std::string path = join(instr.path, ".");
+
+            if (path == "Int")
             { // for casting Int(varname);
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                 if (target.isStrict)
@@ -291,7 +323,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     target.vartype = VariableTypes::Int;
                 }
             }
-            else if (instr.path[0] == "Double")
+            else if (path == "Double")
             { // for casting Int(varname);
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                 if (target.isStrict)
@@ -307,114 +339,87 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     target.vartype = VariableTypes::Double;
                 }
             }
-            else if (instr.path[0] == "free")
+            else if (path == "Terminal.IO.print")
             {
+                for (size_t k = 0; k < instr.arguments.size(); k++)
+                {
+                    std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
+                }
+            }
+            else if (path == "Terminal.IO.println")
+            {
+                for (size_t k = 0; k < instr.arguments.size(); k++)
+                {
+                    std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
+                    std::cout << "\n";
+                }
+            }
+            else if (path == "Terminal.IO.input")
+            {
+
+                if (instr.arguments.size() == 0)
+                {
+                    std::string buffer = "";
+                    std::getline(std::cin, buffer);
+                }
+                else
+                {
+                    VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                    if (!target.isConst)
+                    {
+                        if (target.vartype == VariableTypes::String || !target.isStrict)
+                        {
+                            std::string buffer = "";
+                            std::getline(std::cin, buffer);
+
+                            target.value = buffer;
+
+                            target.vartype = VariableTypes::String;
+                        }
+                        else
+                        {
+                            std::cerr << "Cannot change the type of a strict variable.";
+                        }
+                    }
+                    else
+                    {
+                        std::cerr << "Cannot change the value of a constant.";
+                    }
+                }
+            }
+            else if (path == "Terminal.clear")
+            {
+                if (instr.arguments.size() != 0)
+                {
+                    std::cerr << "Argument Overflow! Function 'clear' expected 0 arguments, got " << instr.arguments.size() << ". \n";
+                }
+                else
+                {
+                    std::cout << "\033[2J\033[1;1H" << std::flush;
+                }
+            }
+            else if (path == "free")
+            {
+
                 if (instr.arguments.size() == 0)
                 {
                     std::cerr << "Function 'free' requires atleast 1 argument";
                 }
-                for (int k = 0; k < instr.arguments.size(); k++)
-                {
-                    scope.back().erase(variantToString2(instr.arguments[k][0].value));
-                }
-            }
-            else if (instr.path[0] == "Terminal")
-            {
-                if (instr.path[1] == "IO")
-                {
-                    if (instr.path[2] == "input")
-                    {
-                        if (instr.arguments.size() == 0)
-                        {
-                            std::string buffer = "";
-                            std::getline(std::cin, buffer);
-                        }
-                        else
-                        {
-                            VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
-                            if (!target.isConst)
-                            {
-                                if (target.vartype == VariableTypes::String || !target.isStrict)
-                                {
-                                    std::string buffer = "";
-                                    std::getline(std::cin, buffer);
-
-                                    target.value = buffer;
-
-                                    target.vartype = VariableTypes::String;
-                                }
-                                else
-                                {
-                                    std::cerr << "Cannot change the type of a strict variable.";
-                                }
-                            }
-                            else
-                            {
-                                std::cerr << "Cannot change the value of a constant.";
-                            }
-                        }
-                    }
-                    else if (instr.path[2] == "print")
-                    {
-                        /* for debugging
-                            try{
-                                std::cout <<"size: " <<instr.arguments.size();
-                                std::cout << "subsize: " << instr.arguments[0].size() << "\n";
-                                std::cout <<"Start: " <<variantToString2(instr.arguments[0][0].value) << "  End: " << variantToString2(instr.arguments[0][instr.arguments[0].size()-1].value) << "\n";
-                            }catch(int a){
-                                std::cout <<"Error here";
-                            }
-                                */
-                        for (size_t k = 0; k < instr.arguments.size(); k++)
-                        {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
-                        }
-                    }
-                    else if (instr.path[2] == "println")
-                    {
-                        /* for debugging
-                            try{
-                                std::cout <<"size: " <<instr.arguments.size();
-                                std::cout << "subsize: " << instr.arguments[0].size() << "\n";
-                                std::cout <<"Start: " <<variantToString2(instr.arguments[0][0].value) << "  End: " << variantToString2(instr.arguments[0][instr.arguments[0].size()-1].value) << "\n";
-                            }catch(int a){
-                                std::cout <<"Error here";
-                            }
-                                */
-                        for (size_t k = 0; k < instr.arguments.size(); k++)
-                        {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
-                        }
-                        std::cout << "\n";
-                    }
-                    else
-                    {
-                        std::cerr << "Unknown identifier 1" << instr.path[2] << "\n";
-                    }
-                }
-                else if (instr.path[1] == "clear")
-                {
-                    if (instr.arguments.size() != 0)
-                    {
-                        std::cerr << "Argument Overflow! Function 'clear' expected 0 arguments, got " << instr.arguments.size() << ". \n";
-                    }
-                    else
-                    {
-                        std::cout << "\033[2J\033[1;1H" << std::flush;
-                    }
-                }
                 else
                 {
-                    std::cerr << "Unknown identifier 2" << instr.path[1] << "\n";
+                    for (int k = 0; k < instr.arguments.size(); k++)
+                    {
+                        scope.back().erase(variantToString2(instr.arguments[k][0].value));
+                    }
                 }
             }
-            else if (isInFunctions(instr.path[0], GlobalFunctionTable))
+            else if (isInFunctions(path, GlobalFunctionTable))
             {
-                GFunction &targetFunc = GlobalFunctionTable[instr.path[0]];
+                GFunction &targetFunc = GlobalFunctionTable[path];
                 size_t count = std::min(instr.arguments.size(), targetFunc.locals.size());
                 if (instr.arguments.size() != targetFunc.locals.size())
                 {
-                    std::cout << "Error: function " << instr.path[0]
+                    std::cerr << "Error: function " << path
                               << " expected "
                               << targetFunc.locals.size()
                               << " arguments but got "
@@ -447,7 +452,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else
             {
-                std::cerr << "Unknown identifier 3" << instr.path[0] << "\n";
+                std::cerr << "Unknown function '" << path << "' \n";
             }
         }
     }

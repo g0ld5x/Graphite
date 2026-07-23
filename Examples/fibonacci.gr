@@ -8,4 +8,8 @@ fn fib(int n)
     return fib(n - 1) + fib(n - 2);
 }
 
-Terminal.IO.println(fib(25));
+var steps = "";
+
+Terminal.IO.input(steps)
+Int(steps)
+Terminal.IO.println(fib(steps));

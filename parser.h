@@ -56,7 +56,8 @@ struct Instruction
         FunctionDeclare,
         FunctionCall,
         Command,
-        Return
+        Return,
+        Space
     };
     Types type;
     std::vector<std::string> path;
@@ -97,7 +98,7 @@ struct GFunction
 using FunctionTable = std::unordered_map<std::string, GFunction>;
 
 
-std::vector<Instruction> parse(std::vector<Token>);
+std::vector<Instruction> parse(const std::vector<Token> & input,std::vector<std::string> & path);
 
 Value ExecuteFunction(const std::string& name,
                    const std::vector<Value>& args);

@@ -16,6 +16,29 @@
 
 // integrate unordered map plsss!!!!! i did bro no worries (me)
 
+std::string joinpath(const std::vector<std::string> &elements, const std::string &delimiter)
+{
+    if (elements.empty())
+        return "";
+
+    // Calculate total length to allocate memory at once
+    size_t total_length = 0;
+    for (const auto &s : elements)
+        total_length += s.length();
+    total_length += delimiter.length() * (elements.size() - 1);
+
+    std::string result;
+    result.reserve(total_length);
+
+    // Join elements
+    result += elements[0];
+    for (size_t i = 1; i < elements.size(); ++i)
+    {
+        result += delimiter + elements[i];
+    }
+
+    return result;
+}
 bool hold_same_type(const Value &v1, const Value &v2)
 {
     // if the indices are equal, the active types are the same
@@ -243,7 +266,7 @@ Value ExecuteFunction(
     if (it == ftable.end())
     {
         std::cerr << "Error: function " << name << " does not exist\n";
-        return nullptr;
+        return Value{};
     }
 
     GFunction &targetFunc = it->second;
@@ -257,7 +280,7 @@ Value ExecuteFunction(
                   << arguments.size()
                   << "\n";
 
-        return nullptr;
+        return Value{};
     }
 
     VariableTable bufferTable;
@@ -291,74 +314,115 @@ Value ExecuteFunction(
 
 Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack &scope, FunctionTable &functionTable)
 {
-
-if (tokens[left].type == TokenType::Identifier &&
-    left + 1 <= right &&
-    tokens[left + 1].type == TokenType::LParen)
-{
-    int depth = 1;
-    int closing = left + 1;
-
-    while (++closing <= right)
+    if (tokens.empty())
     {
-        if (tokens[closing].type == TokenType::LParen)
-            depth++;
-        else if (tokens[closing].type == TokenType::RParen)
-        {
-            depth--;
-            if (depth == 0)
-                break;
-        }
+        throw std::runtime_error("Cannot evaluate empty expression");
     }
 
-    // Only execute immediately if the function call
-    // spans the ENTIRE expression.
-    if (closing == right)
+    if (left < 0 || right >= (int)tokens.size() || left > right)
     {
+        throw std::runtime_error("Invalid evaluation range");
+    }
+    if (tokens[left].type == TokenType::Identifier)
+    {
+        int parenIndex = -1;
 
-        std::vector<std::vector<Token>> bufferArg(1);
-
-        int paranDepth = 1;
-
-        for (int i = left + 2;; i++)
+        // Find the opening parenthesis after the function path
+        for (int i = left; i <= right; i++)
         {
             if (tokens[i].type == TokenType::LParen)
             {
-                paranDepth++;
-                bufferArg.back().push_back(tokens[i]);
+                parenIndex = i;
+                break;
             }
-            else if (tokens[i].type == TokenType::RParen)
-            {
-                paranDepth--;
 
-                if (paranDepth == 0)
-                    break;
-
-                bufferArg.back().push_back(tokens[i]);
-            }
-            else if (tokens[i].type == TokenType::Comma &&
-                     paranDepth == 1)
+            if (tokens[i].type != TokenType::Identifier &&
+                tokens[i].type != TokenType::Dot)
             {
-                bufferArg.push_back({});
-            }
-            else
-            {
-                bufferArg.back().push_back(tokens[i]);
+                break;
             }
         }
 
-        if (bufferArg.size() == 1 && bufferArg[0].empty())
+        if (parenIndex != -1)
         {
-            bufferArg.clear();
-        }
+            int depth = 1;
+            int closing = parenIndex;
 
-        return ExecuteFunction(
-            variantToString(tokens[left].value),
-            bufferArg,
-            functionTable,
-            scope);
+            while (++closing <= right)
+            {
+                if (tokens[closing].type == TokenType::LParen)
+                    depth++;
+
+                else if (tokens[closing].type == TokenType::RParen)
+                {
+                    depth--;
+
+                    if (depth == 0)
+                        break;
+                }
+            }
+
+            if (closing == right)
+            {
+                std::vector<std::vector<Token>> bufferArg;
+                std::vector<Token> current;
+
+                int argDepth = 1;
+
+                for (int i = parenIndex + 1; i <= right; i++)
+                {
+                    Token currentToken = tokens[i];
+
+                    if (currentToken.type == TokenType::LParen)
+                    {
+                        argDepth++;
+                        current.push_back(currentToken);
+                    }
+                    else if (currentToken.type == TokenType::RParen)
+                    {
+                        argDepth--;
+
+                        if (argDepth == 0)
+                        {
+                            if (!current.empty())
+                                bufferArg.push_back(current);
+
+                            break;
+                        }
+
+                        current.push_back(currentToken);
+                    }
+                    else if (currentToken.type == TokenType::Comma &&
+                             argDepth == 1)
+                    {
+                        bufferArg.push_back(current);
+                        current.clear();
+                    }
+                    else
+                    {
+                        current.push_back(currentToken);
+                    }
+                }
+
+                std::vector<std::string> funcPath;
+
+                for (int i = left; i < parenIndex; i++)
+                {
+                    if (tokens[i].type == TokenType::Identifier)
+                    {
+                        funcPath.push_back(
+                            variantToString(tokens[i].value));
+                    }
+                }
+
+                return ExecuteFunction(
+                    joinpath(funcPath, "."),
+                    bufferArg,
+                    functionTable,
+                    scope);
+            }
+        }
     }
-}
     // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
 
     // Invalid range
@@ -649,7 +713,7 @@ if (tokens[left].type == TokenType::Identifier &&
     }
 }
 
-std::vector<Instruction> parse(std::vector<Token> input)
+std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std::string> &path)
 {
     std::vector<Instruction> instructions;
     bool strictMode = false;
@@ -670,7 +734,10 @@ std::vector<Instruction> parse(std::vector<Token> input)
 
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    instr.Funcname = variantToString(input[i + 1].value);
+                    instr.Funcname = path.empty()
+                                         ? variantToString(input[i + 1].value)
+                                         : joinpath(path, ".") + "." + variantToString(input[i + 1].value);
+
                     i++;
                 }
                 else
@@ -763,7 +830,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     i++;
                 }
 
-                instr.body = parse(bodyTokens);
+                instr.body = parse(bodyTokens, path);
 
                 instructions.push_back(instr);
 
@@ -841,7 +908,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                         }
                     }
 
-                    instr.body = parse(bodyTokens);
+                    instr.body = parse(bodyTokens, path);
                 }
 
                 instructions.push_back(instr);
@@ -912,7 +979,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                         }
                     }
 
-                    instr.body = parse(bodyTokens);
+                    instr.body = parse(bodyTokens, path);
                 }
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier && variantToString(input[i + 1].value) == "else")
                 {
@@ -948,7 +1015,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                             }
                         }
 
-                        instr.elseBody = parse(elsebodyTokens);
+                        instr.elseBody = parse(elsebodyTokens, path);
                     }
                 }
                 instructions.push_back(instr);
@@ -961,6 +1028,68 @@ std::vector<Instruction> parse(std::vector<Token> input)
             {
                 globalMode = true;
             }
+
+            else if (value == "space")
+            {
+                instr.type = Instruction::Types::Space;
+                std::string name;
+
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
+                {
+                    name = variantToString(input[i + 1].value);
+                }
+                else
+                {
+                    std::cerr << "Error: expected space name\n";
+                    continue;
+                }
+
+                while (i < input.size() && input[i].type != TokenType::LCurl)
+                {
+                    i++;
+                }
+
+                if (i >= input.size())
+                {
+                    continue;
+                }
+
+                i++; // skip {
+
+                std::vector<Token> bodyTokens;
+
+                int curlyDepth = 1;
+
+                while (i < input.size() && curlyDepth > 0)
+                {
+                    if (input[i].type == TokenType::LCurl)
+                    {
+                        curlyDepth++;
+                    }
+                    else if (input[i].type == TokenType::RCurl)
+                    {
+                        curlyDepth--;
+                    }
+
+                    if (curlyDepth > 0)
+                    {
+                        bodyTokens.push_back(input[i]);
+                    }
+
+                    i++;
+                }
+
+                path.push_back(name);
+
+                instr.body = parse(bodyTokens, path);
+
+                path.pop_back();
+
+                instructions.push_back(instr);
+
+                continue;
+            }
+
             else if (value == "var")
             {
                 int paranDepth = 0;
@@ -993,22 +1122,21 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 }
                 instructions.push_back(instr);
             }
-else if (value == "return")
-{
-    instr.type = Instruction::Types::Return;
+            else if (value == "return")
+            {
+                instr.type = Instruction::Types::Return;
 
-    i++;
+                i++;
 
+                while (input[i].type != TokenType::Semicolon &&
+                       input[i].type != TokenType::NewLine)
+                {
+                    instr.expression.push_back(input[i]);
+                    i++;
+                }
 
-    while (input[i].type != TokenType::Semicolon &&
-           input[i].type != TokenType::NewLine)
-    {
-        instr.expression.push_back(input[i]);
-        i++;
-    }
-
-    instructions.push_back(instr);
-}
+                instructions.push_back(instr);
+            }
             else if (value == "const")
             {
                 int paranDepth = 0;
@@ -1067,6 +1195,7 @@ else if (value == "return")
                   input[i + 1].type == TokenType::Dot)))
             {
                 instr.type = Instruction::Types::FunctionCall;
+                instr.path = path;
 
                 while (i < input.size() && input[i].type == TokenType::Identifier)
                 {
@@ -1075,6 +1204,13 @@ else if (value == "return")
                     if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
                     {
                         i += 2;
+
+                        if (i >= input.size() || input[i].type != TokenType::Identifier)
+                        {
+                            std::cerr << "Invalid function path\n";
+                            break;
+                        }
+
                         continue;
                     }
 

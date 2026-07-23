@@ -31,6 +31,10 @@
     <p>You can make command using //. Ex: //this is a command!. Note: Multiline comments haven't been implemented yet but will be implemented.</p>
     <h2>9. Parameters</h2>
     <p>Parameters can now be used. The parameters type must be defined explicitly. Ex: fn test(string name){Terminal.IO.println(name);} test("John");</p>
+    <h2>10. Function usage</h2>
+    <p>User defined functions can be used inside functions. Ex: fn add(int a,int b){return a+b;} Terminal.IO.println(add(3,2));</p>
+    <h2>11. Spaces</h2>
+    <p>Spaces are used to organize values together. ex: space Math{ fn add(double a,double b){return a+b} }   Math.add(2,3);</p>
 
     <center><h1>|Example Programs|</h1></center>
     <h2>Hello World:</h2>
@@ -81,12 +85,75 @@ while(true){
     
 } <br></p>
 <br>
+<h2>Fibonacci Sequence Calculator</h2>
+<p class="code">
+    fn fib(int n) <br>
+{ <br>
+    if(n <= 1) <br>
+    { <br>
+        return n; <br>
+    } <br>
+
+    return fib(n - 1) + fib(n - 2); <br>
+} <br>
+
+Terminal.IO.println(fib(25)); <br>
+</p>
+
+<h2>Delta V Calculator</h2>
+<p>
+    fn ln(double x) <br>
+{ <br>
+    if(x <= 0) <br>
+    { <br>
+        return 0; <br>
+    } <br>
+
+    var k = 0; <br>
+
+    while(x > e) <br>
+    { <br>
+        x = x / e; <br>
+        k = k + 1; <br>
+    } <br>
+ <br>
+    while(x < 1) <br>
+    { <br>
+        x = x * e; <br>
+        k = k - 1; <br>
+    } <br>
+<br>
+    var y = (x - 1) / (x + 1); <br>
+
+    var y2 = y * y; <br>
+    var result = 0.0; <br>
+
+    var term = y; <br>
+    var n = 1; <br>
+
+    while(n < 100) <br>
+    {
+        result = result + term / n; <br>
+
+        term = term * y2; <br>
+        n = n + 2; <br>
+    } <br>
+
+    return 2 * result + k; <br>
+} <br>
+
+fn deltaV(double isp, double initialMass, double finalMass) <br>
+{
+    const g0 = 9.80665; <br>
+    return isp * g0 * ln(initialMass / finalMass); <br>
+} <br>
+
+Terminal.IO.println(deltaV(180,35,20)) <br>
+</p>
 
 <center><h1>How to interpret graphite code?</h1></center>
-<h2>REPL</h2>
-<p>To interpret graphite code, go to the <a href="https://github.com/g0ld5x/Graphite" target="_blank">graphite github page</a>. If you want to have a repl, compile using this command:</p> <p class="code"> g++ -Ofast -march=native -flto -fno-plt -fomit-frame-pointer lexer.cpp parser.cpp interpreter.cpp repl.cpp -o repl -lreadline </p> <p>In the repl, you can enter --debug to see execution times. If you want to close debug mode, type --debug again.</p>
-<br>
-<h2>Interpret whole files</h2>
-<p>To interpret whole files, use this command to compile the file interpreter: </p> <p class="code">g++ -Ofast -march=native -flto -fno-plt -fomit-frame-pointer lexer.cpp parser.cpp interpreter.cpp cliinterpret.cpp -o interpret</p> <p>Usage: ./interpret code.gh</p>
+<p>To interpret graphite code, go to the <a href="https://github.com/g0ld5x/Graphite" target="_blank"> github page </a> and build using the fastcompile.bash bash file.</p>
+<h3>Usage</h3>
+<p>To interpret files, use ./graphite filename. To enter into repl, just type ./graphite</p>
 </body>
 </html>

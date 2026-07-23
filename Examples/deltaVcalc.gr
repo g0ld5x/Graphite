@@ -1,47 +1,78 @@
+fn int(input){
+    var val = input;
+    Int(val)
+    return val;
+}
+
+fn string(input){
+    return input+"";
+}
+
+fn double(input){
+    var val = input;
+    Double(val);
+    return val;
+}
+
+fn input(string text){
+    var val = 0
+    Terminal.IO.print(text)
+    Terminal.IO.input(val)
+    return val
+}
+
 fn ln(double x)
 {
     if(x <= 0)
     {
-        return 0;
+        return 0
     }
 
     var k = 0;
 
     while(x > e)
     {
-        x = x / e;
-        k = k + 1;
+        x = x / e
+        k = k + 1
     }
 
     while(x < 1)
     {
-        x = x * e;
-        k = k - 1;
+        x = x * e
+        k = k - 1
     }
 
-    var y = (x - 1) / (x + 1);
+    var y = (x - 1) / (x + 1)
 
-    var y2 = y * y;
-    var result = 0.0;
+    var y2 = y * y
+    var result = 0.0
 
-    var term = y;
-    var n = 1;
+    var term = y
+    var n = 1
 
     while(n < 100)
     {
-        result = result + term / n;
+        result = result + term / n
 
-        term = term * y2;
-        n = n + 2;
+        term = term * y2
+        n = n + 2
     }
 
-    return 2 * result + k;
+    return 2 * result + k
 }
 
 fn deltaV(double isp, double initialMass, double finalMass)
 {
-    var g0 = 9.80665;
-    return isp * g0 * ln(initialMass / finalMass);
+    const g0 = 9.80665
+    return isp * g0 * ln(initialMass / finalMass)
 }
 
-Terminal.IO.println(deltaV(180,35,20))
+
+var isp = double(input("Enter ISP: "))
+var wet = double(input("Enter Rocket Mass With Fuel: "))
+var dry = double(input("Enter Rocket Mass With No Fuel: "))
+
+Terminal.IO.println("","","---RESULT---");
+
+Terminal.IO.print("Delta v:", deltaV(isp,wet,dry))
+Terminal.IO.println("","------------")

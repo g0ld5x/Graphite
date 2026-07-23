@@ -1,11 +1,73 @@
-fn fib(int n)
+space Math
 {
-    if(n <= 1)
+
+    fn ln(double x)
     {
-        return n;
+        if(x <= 0)
+        {
+            return 0
+        }
+
+        var k = 0;
+
+        while(x > e)
+        {
+            x = x / e
+            k = k + 1
+        }
+
+        while(x < 1)
+        {
+            x = x * e
+            k = k - 1
+        }
+
+        var y = (x - 1) / (x + 1)
+
+        var y2 = y * y
+        var result = 0.0
+
+        var term = y
+        var n = 1
+
+        while(n < 100)
+        {
+            result = result + term / n
+
+            term = term * y2
+            n = n + 2
+        }
+
+        return 2 * result + k
     }
 
-    return fib(n - 1) + fib(n - 2);
+fn abs(double x) {
+    if (x < 0) {
+        return -x
+    }
+
+    return x
 }
 
-Terminal.IO.println(fib(30));
+fn sqrt(double n) {
+    if (n <= 0) {
+        return 0
+    }
+
+    var guess = n / 2
+    var epsilon = 0.000001
+
+    while (true) {
+        var next = (guess + n / guess) / 2
+
+        if (Math.abs(next - guess) < epsilon) {
+            return next
+        }
+
+        guess = next
+    }
+}
+
+}
+
+Terminal.IO.print(Math.sqrt(321))
