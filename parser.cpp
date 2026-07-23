@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "interpreter.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -231,8 +232,125 @@ bool variantToBool(const Value &value)
     }
 }
 
-Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack &scope)
+Value ExecuteFunction(
+    const std::string &name,
+    const std::vector<std::vector<Token>> &arguments,
+    FunctionTable& ftable,
+    ScopeStack& scopeStack)
 {
+    auto it = ftable.find(name);
+
+    if (it == ftable.end())
+    {
+        std::cout << "Error: function " << name << " does not exist\n";
+        return nullptr;
+    }
+
+    GFunction &targetFunc = it->second;
+
+    if (arguments.size() != targetFunc.locals.size())
+    {
+        std::cout << "Error: function " << name
+                  << " expected "
+                  << targetFunc.locals.size()
+                  << " arguments but got "
+                  << arguments.size()
+                  << "\n";
+
+        return nullptr;
+    }
+
+    VariableTable bufferTable;
+
+    for (size_t k = 0; k < arguments.size(); k++)
+    {
+        VariableData var = targetFunc.locals[k];
+
+        var.value =
+            Evaluate(arguments[k],
+                     0,
+                     arguments[k].size() - 1,
+                     scopeStack, ftable);
+
+        bufferTable[var.name] = var;
+    }
+
+    scopeStack.push_back(bufferTable);
+std::cout << "Function scope variables:\n";
+
+for(auto& [name, value] : scopeStack.back())
+{
+    std::cout << name << "\n";
+}
+    ExecutionResult result = interpret(targetFunc.body);
+
+    scopeStack.pop_back();
+
+    if (result.didReturn)
+    {
+        return result.returnValue;
+    }
+
+    return Value{};
+}
+
+Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack& scope, FunctionTable& functionTable)
+{
+
+    if (tokens[left].type == TokenType::Identifier &&
+        left + 1 <= right &&
+        tokens[left + 1].type == TokenType::LParen &&
+        tokens[right].type == TokenType::RParen)
+    {
+        std::cout << "Calling function: "
+                  << variantToString(tokens[left].value)
+                  << "\n";
+        std::vector<std::vector<Token>> bufferArg(1);
+
+        int paranDepth = 1;
+
+        for (int i = left + 2;; i++)
+        {
+            if (tokens[i].type == TokenType::LParen)
+            {
+                paranDepth++;
+                bufferArg.back().push_back(tokens[i]);
+            }
+            else if (tokens[i].type == TokenType::RParen)
+            {
+                paranDepth--;
+
+                if (paranDepth == 0)
+                    break;
+
+                bufferArg.back().push_back(tokens[i]);
+            }
+            else if (tokens[i].type == TokenType::Comma &&
+                     paranDepth == 1)
+            {
+                bufferArg.push_back({});
+            }
+            else
+            {
+                bufferArg.back().push_back(tokens[i]);
+            }
+        }
+
+        if (bufferArg.size() == 1 && bufferArg[0].empty())
+        {
+            bufferArg.clear();
+        }
+        std::cout << "Function token type: "
+                  << (int)tokens[left].type << "\n";
+        std::cout << "Function name: "
+                  << variantToString(tokens[left].value)
+                  << "\n";
+        return ExecuteFunction(
+            variantToString(tokens[left].value),
+            bufferArg,
+            functionTable,
+            scope);
+    }
     // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
 
     // Invalid range
@@ -292,7 +410,7 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
     // Prefix unary operators
     if (isUnary(tokens, left))
     {
-        Value rhs = Evaluate(tokens, left + 1, right, scope);
+        Value rhs = Evaluate(tokens, left + 1, right, scope, functionTable);
 
         switch (tokens[left].type)
         {
@@ -356,8 +474,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
     if (split == -1)
         throw std::runtime_error("No operator found.");
 
-    Value lhs = Evaluate(tokens, left, split - 1, scope);
-    Value rhs = Evaluate(tokens, split + 1, right, scope);
+    Value lhs = Evaluate(tokens, left, split - 1, scope, functionTable);
+    Value rhs = Evaluate(tokens, split + 1, right, scope, functionTable);
     switch (tokens[split].type)
     {
 
@@ -370,7 +488,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         {
             int intVal = variantToInt(lhs) + variantToInt(rhs);
             int doubVal = variantToDouble(lhs) + variantToDouble(rhs);
-            if(intVal == doubVal){
+            if (intVal == doubVal)
+            {
                 return intVal;
             }
             return doubVal;
@@ -780,7 +899,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
 
                     instr.body = parse(bodyTokens);
                 }
-                if (i + 1 < input.size() &&input[i + 1].type == TokenType::Identifier &&variantToString(input[i + 1].value) == "else")
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier && variantToString(input[i + 1].value) == "else")
                 {
 
                     if (i + 2 < input.size() && input[i + 2].type == TokenType::LCurl)
@@ -859,6 +978,16 @@ std::vector<Instruction> parse(std::vector<Token> input)
             else if (value == "return")
             {
                 instr.type = Instruction::Types::Return;
+
+                i++; // move past return
+
+                while (input[i].type != TokenType::Semicolon &&
+                       input[i].type != TokenType::NewLine)
+                {
+                    instr.expression.push_back(input[i]);
+                    i++;
+                }
+
                 instructions.push_back(instr);
             }
             else if (value == "const")
@@ -915,68 +1044,83 @@ std::vector<Instruction> parse(std::vector<Token> input)
             else
             {
                 instr.type = Instruction::Types::FunctionCall;
-                while (i < input.size() && input[i].type == TokenType::Identifier)
+
+while (i < input.size() && input[i].type == TokenType::Identifier)
+{
+    instr.path.push_back(variantToString(input[i].value));
+
+    if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
+    {
+        i += 2;
+        continue;
+    }
+
+    else if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
+    {
+        i++; // move to '('
+
+        int argCount = 0;
+        int paranDepth = 1;
+
+        while (i + 1 < input.size() && paranDepth != 0)
+        {
+            i++;
+
+            Token current = input[i];
+
+            if (current.type == TokenType::LParen)
+            {
+                paranDepth++;
+
+                // store nested '('
+                if (paranDepth > 1)
                 {
-                    instr.path.push_back(variantToString(input[i].value));
-                    if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
-                    {
-                        i += 2;
-                        continue;
-                    }
-                    else if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
-                    {
-                        int argCount = 0;
-                        int paranDepth = 0;
-                        paranDepth++;
-                        while (i + 1 < input.size() && paranDepth != 0)
-                        {
-                            i++;
-                            if (input[i + 1].type == TokenType::RParen)
-                            {
-                                paranDepth--;
-                                if (paranDepth != 0)
-                                {
-                                    if (instr.arguments.size() <= argCount)
-                                    {
-                                        instr.arguments.resize(argCount + 1);
-                                    }
+                    if (instr.arguments.size() <= argCount)
+                        instr.arguments.resize(argCount + 1);
 
-                                    instr.arguments[argCount].push_back(input[i + 1]);
-                                }
-                            }
-                            else if (input[i + 1].type == TokenType::Comma)
-                            {
-                                argCount++;
-                            }
-                            else if (input[i + 1].type == TokenType::LParen)
-                            {
-                                paranDepth++;
-                                if (paranDepth != 1)
-                                {
-                                    if (instr.arguments.size() <= argCount)
-                                    {
-                                        instr.arguments.resize(argCount + 1);
-                                    }
-
-                                    instr.arguments[argCount].push_back(input[i + 1]);
-                                }
-                            }
-                            else
-                            {
-                                // this is to ensure that arguments vector is large enough
-                                if (instr.arguments.size() <= argCount)
-                                {
-                                    instr.arguments.resize(argCount + 1);
-                                }
-
-                                // now it is safe to push back
-                                instr.arguments[argCount].push_back(input[i + 1]);
-                            }
-                        }
-                    }
-                    break;
+                    instr.arguments[argCount].push_back(current);
                 }
-                instructions.push_back(instr);
+            }
+
+            else if (current.type == TokenType::RParen)
+            {
+                paranDepth--;
+
+                // store nested ')' but not the function's closing ')'
+                if (paranDepth > 0)
+                {
+                    if (instr.arguments.size() <= argCount)
+                        instr.arguments.resize(argCount + 1);
+
+                    instr.arguments[argCount].push_back(current);
+                }
+            }
+
+            else if (current.type == TokenType::Comma && paranDepth == 1)
+            {
+                argCount++;
+            }
+
+            else
+            {
+                if (instr.arguments.size() <= argCount)
+                    instr.arguments.resize(argCount + 1);
+
+                instr.arguments[argCount].push_back(current);
+            }
+        }
+
+        // Remove empty argument caused by ()
+        if (instr.arguments.size() == 1 && instr.arguments[0].empty())
+        {
+            instr.arguments.clear();
+        }
+    }
+
+    break;
+}
+
+instructions.push_back(instr);
             }
         }
     }

@@ -117,8 +117,16 @@ void initInterpreter()
         true,
         VariableTypes::Bool};
 }
-bool interpret(const std::vector<Instruction> &input)
+ExecutionResult interpret(const std::vector<Instruction> &input)
 {
+        for (const auto& instr : input)
+    {
+        std::cout << "Instruction type: "
+                << (int)instr.type
+                << "\n";
+
+        // existing code...
+    }
     bool returned = false;
     for (size_t i = 0; i < input.size(); i++)
     {
@@ -133,13 +141,34 @@ bool interpret(const std::vector<Instruction> &input)
             func.locals = instr.locals;
             func.isVoid = true;
         }
-        else if (instr.type == Instruction::Types::Return)
-        {
-            return true;
-        }
+else if (instr.type == Instruction::Types::Return)
+{
+    std::cout << "Executing return\n";
+
+    ExecutionResult exec;
+    exec.didReturn = true;
+
+    std::cout << "Return expression tokens: " << instr.expression.size() << "\n";
+
+for (const auto& token : instr.expression)
+{
+    std::cout << "Type: " << (int)token.type << "\n";
+}
+    exec.returnValue = Evaluate(
+        instr.expression,
+        0,
+        instr.expression.size() - 1,
+        scopeStack,
+        GlobalFunctionTable
+    );
+
+    std::cout << "Return evaluated\n";
+
+    return exec;
+}
         else if (instr.type == Instruction::Types::Declare)
         { // for things like var x = 32;
-            Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack);
+            Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack,GlobalFunctionTable);
             if (std::holds_alternative<int>(value))
             {
                 instr.vardata.vartype = VariableTypes::Int;
@@ -159,7 +188,8 @@ bool interpret(const std::vector<Instruction> &input)
             instr.vardata.value = value;
             if (instr.vardata.isGlobal)
             {
-                scopeStack.front()[instr.vardata.name] = instr.vardata;}
+                scopeStack.front()[instr.vardata.name] = instr.vardata;
+            }
             else
             {
                 scopeStack.back()[instr.vardata.name] = instr.vardata;
@@ -175,7 +205,7 @@ bool interpret(const std::vector<Instruction> &input)
             else
             {
 
-                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack);
+                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack,GlobalFunctionTable);
                 if (target.isStrict)
                 {
                     if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
@@ -205,28 +235,28 @@ bool interpret(const std::vector<Instruction> &input)
                 }
             }
         }
-                else if (instr.type == Instruction::Types::If)
+        else if (instr.type == Instruction::Types::If)
         {
             scopeStack.push_back(VariableTable{});
 
-            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack)))
+            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack,GlobalFunctionTable)))
             {
-                bool result = interpret(instr.body);
+                ExecutionResult result = interpret(instr.body);
 
-                if (result)
+                if (result.didReturn = true)
                 {
                     scopeStack.pop_back();
-                    return true;
+                    return result;
                 }
             }
             else if (!instr.elseBody.empty())
             {
-                bool result = interpret(instr.elseBody);
+                ExecutionResult result = interpret(instr.elseBody);
 
-                if (result)
+                if (result.didReturn)
                 {
                     scopeStack.pop_back();
-                    return true;
+                    return result;
                 }
             }
 
@@ -235,14 +265,14 @@ bool interpret(const std::vector<Instruction> &input)
         else if (instr.type == Instruction::Types::While)
         {
             scopeStack.push_back(VariableTable{});
-            while (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack)) == true)
+            while (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack,GlobalFunctionTable)) == true)
             {
-                bool result = interpret(instr.body);
+                ExecutionResult result = interpret(instr.body);
 
-                if (result)
+                if (result.didReturn)
                 {
                     scopeStack.pop_back();
-                    return true;
+                    return result;
                 }
             }
             scopeStack.pop_back();
@@ -342,7 +372,7 @@ bool interpret(const std::vector<Instruction> &input)
                                 */
                         for (size_t k = 0; k < instr.arguments.size(); k++)
                         {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack));
+                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack,GlobalFunctionTable));
                         }
                     }
                     else if (instr.path[2] == "println")
@@ -358,7 +388,7 @@ bool interpret(const std::vector<Instruction> &input)
                                 */
                         for (size_t k = 0; k < instr.arguments.size(); k++)
                         {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack));
+                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack,GlobalFunctionTable));
                         }
                         std::cout << "\n";
                     }
@@ -388,34 +418,37 @@ bool interpret(const std::vector<Instruction> &input)
                 auto targetFunc = GlobalFunctionTable[instr.path[0]];
                 size_t count = std::min(instr.arguments.size(), targetFunc.locals.size());
                 if (instr.arguments.size() != targetFunc.locals.size())
-{
-                std::cout << "Error: function " << instr.path[0]
-                        << " expected "
-                        << targetFunc.locals.size()
-                        << " arguments but got "
-                        << instr.arguments.size()
-                        << "\n";
-
-                return true;
-            }
-                for(int k = 0; k < count;k++){
-                    targetFunc.locals[k].value = Evaluate(instr.arguments[k],0,instr.arguments[k].size()-1,scopeStack);
+                {
+                    std::cout << "Error: function " << instr.path[0]
+                              << " expected "
+                              << targetFunc.locals.size()
+                              << " arguments but got "
+                              << instr.arguments.size()
+                              << "\n";
+                              ExecutionResult result;
+                              result.didReturn = false;
+                              result.returnValue  = nullptr;
+                    return result;
+                }
+                for (int k = 0; k < count; k++)
+                {
+                    targetFunc.locals[k].value = Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack,GlobalFunctionTable);
                 }
                 VariableTable bufferTable;
-                
-                for (const auto& var : targetFunc.locals)
+
+                for (const auto &var : targetFunc.locals)
                 {
-                    
+
                     bufferTable[var.name] = var;
                 }
                 scopeStack.push_back(bufferTable);
-                bool didReturn = interpret(targetFunc.body);
+                ExecutionResult Return = interpret(targetFunc.body);
 
                 scopeStack.pop_back();
 
-                if (didReturn)
+                if (Return.didReturn)
                 {
-                    return true;
+                    return Return;
                 }
             }
             else
@@ -424,5 +457,5 @@ bool interpret(const std::vector<Instruction> &input)
             }
         }
     }
-    return false;
+    return ExecutionResult{};
 }

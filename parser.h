@@ -99,11 +99,8 @@ using FunctionTable = std::unordered_map<std::string, GFunction>;
 
 std::vector<Instruction> parse(std::vector<Token>);
 
+Value CallFunction(const std::string& name,
+                   const std::vector<Value>& args);
 
-Value Evaluate(
-    const std::vector<Token> &tokens,
-    int left,
-    int right,
-    ScopeStack& scope
-);
+Value Evaluate(const std::vector<Token> &tokens,int left,int right,ScopeStack& scope, FunctionTable &functionTable);
 #endif

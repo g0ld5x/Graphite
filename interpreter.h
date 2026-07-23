@@ -9,7 +9,12 @@
 #include "parser.h"
 #include "lexer.h"
 
+struct ExecutionResult{
+    bool didReturn;
+    Value returnValue;
+};
+
 void initInterpreter(); //used to run things once without recursion to init the interpreter.
 
-bool interpret(const std::vector<Instruction>& input);
+ExecutionResult interpret(const std::vector<Instruction>& input);
 #endif
