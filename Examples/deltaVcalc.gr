@@ -1,0 +1,47 @@
+fn ln(double x)
+{
+    if(x <= 0)
+    {
+        return 0;
+    }
+
+    var k = 0;
+
+    while(x > e)
+    {
+        x = x / e;
+        k = k + 1;
+    }
+
+    while(x < 1)
+    {
+        x = x * e;
+        k = k - 1;
+    }
+
+    var y = (x - 1) / (x + 1);
+
+    var y2 = y * y;
+    var result = 0.0;
+
+    var term = y;
+    var n = 1;
+
+    while(n < 100)
+    {
+        result = result + term / n;
+
+        term = term * y2;
+        n = n + 2;
+    }
+
+    return 2 * result + k;
+}
+
+fn deltaV(double isp, double initialMass, double finalMass)
+{
+    var g0 = 9.80665;
+    return isp * g0 * ln(initialMass / finalMass);
+}
+
+Terminal.IO.println(deltaV(180,35,20))

@@ -51,14 +51,13 @@ bool isInFunctions(std::string name, FunctionTable functions)
     }
 }
 
-ScopeStack scopeStack;
 FunctionTable GlobalFunctionTable;
 
-bool variableExists(std::string name)
+bool variableExists(std::string name, ScopeStack &scope)
 {
-    for (int i = scopeStack.size() - 1; i >= 0; i--)
+    for (int i = scope.size() - 1; i >= 0; i--)
     {
-        if (scopeStack[i].find(name) != scopeStack[i].end())
+        if (scope[i].find(name) != scope[i].end())
         {
             return true;
         }
@@ -67,13 +66,13 @@ bool variableExists(std::string name)
     return false;
 }
 
-VariableData &getVariable(std::string name)
+VariableData &getVariable2(std::string name, ScopeStack &scope)
 {
-    for (int i = scopeStack.size() - 1; i >= 0; i--)
+    for (int i = scope.size() - 1; i >= 0; i--)
     {
-        auto it = scopeStack[i].find(name);
+        auto it = scope[i].find(name);
 
-        if (it != scopeStack[i].end())
+        if (it != scope[i].end())
         {
             return it->second;
         }
@@ -82,10 +81,10 @@ VariableData &getVariable(std::string name)
     throw std::runtime_error("Unknown variable " + name);
 }
 
-void initInterpreter()
+void initInterpreter(ScopeStack &scope)
 {
-    scopeStack.push_back(VariableTable{}); // global scope
-    scopeStack[0]["pi"] = {
+    scope.push_back(VariableTable{}); // global scope
+    scope[0]["pi"] = {
         "pi",
         M_PI,
         true, // isConst
@@ -93,7 +92,7 @@ void initInterpreter()
         true,
         VariableTypes::Double};
 
-    scopeStack[0]["e"] = {
+    scope[0]["e"] = {
         "e",
         M_E,
         true, // isConst
@@ -101,7 +100,7 @@ void initInterpreter()
         true,
         VariableTypes::Double};
 
-    scopeStack[0]["true"] = {
+    scope[0]["true"] = {
         "true",
         true,
         true, // isConst
@@ -109,7 +108,7 @@ void initInterpreter()
         true,
         VariableTypes::Bool};
 
-    scopeStack[0]["false"] = {
+    scope[0]["false"] = {
         "false",
         false,
         true, // isConst
@@ -117,16 +116,8 @@ void initInterpreter()
         true,
         VariableTypes::Bool};
 }
-ExecutionResult interpret(const std::vector<Instruction> &input)
+ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &scope)
 {
-        for (const auto& instr : input)
-    {
-        std::cout << "Instruction type: "
-                << (int)instr.type
-                << "\n";
-
-        // existing code...
-    }
     bool returned = false;
     for (size_t i = 0; i < input.size(); i++)
     {
@@ -141,34 +132,34 @@ ExecutionResult interpret(const std::vector<Instruction> &input)
             func.locals = instr.locals;
             func.isVoid = true;
         }
-else if (instr.type == Instruction::Types::Return)
-{
-    std::cout << "Executing return\n";
+        else if (instr.type == Instruction::Types::Return)
+        {
 
-    ExecutionResult exec;
-    exec.didReturn = true;
+            ExecutionResult exec;
+            exec.didReturn = true;
 
-    std::cout << "Return expression tokens: " << instr.expression.size() << "\n";
+            for (const auto &token : instr.expression)
+            {
+            }
+            exec.returnValue = Evaluate(
+                instr.expression,
+                0,
+                instr.expression.size() - 1,
+                scope,
+                GlobalFunctionTable);
 
-for (const auto& token : instr.expression)
-{
-    std::cout << "Type: " << (int)token.type << "\n";
-}
-    exec.returnValue = Evaluate(
-        instr.expression,
-        0,
-        instr.expression.size() - 1,
-        scopeStack,
-        GlobalFunctionTable
-    );
-
-    std::cout << "Return evaluated\n";
-
-    return exec;
-}
+            return exec;
+        }
         else if (instr.type == Instruction::Types::Declare)
-        { // for things like var x = 32;
-            Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack,GlobalFunctionTable);
+        {
+
+            Value value = Evaluate(
+                instr.expression,
+                0,
+                instr.expression.size() - 1,
+                scope,
+                GlobalFunctionTable);
+
             if (std::holds_alternative<int>(value))
             {
                 instr.vardata.vartype = VariableTypes::Int;
@@ -185,19 +176,23 @@ for (const auto& token : instr.expression)
             {
                 instr.vardata.vartype = VariableTypes::Double;
             }
+
             instr.vardata.value = value;
+
             if (instr.vardata.isGlobal)
             {
-                scopeStack.front()[instr.vardata.name] = instr.vardata;
+
+                scope.front()[instr.vardata.name] = instr.vardata;
             }
             else
             {
-                scopeStack.back()[instr.vardata.name] = instr.vardata;
+
+                scope.back()[instr.vardata.name] = instr.vardata;
             }
         }
         else if (instr.type == Instruction::Types::Assign)
         { // for things like var x = 32;
-            VariableData &target = getVariable(instr.vardata.name);
+            VariableData &target = getVariable2(instr.vardata.name, scope);
             if (target.isConst)
             {
                 std::cerr << "Cant change the value of a constant. \n";
@@ -205,7 +200,7 @@ for (const auto& token : instr.expression)
             else
             {
 
-                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scopeStack,GlobalFunctionTable);
+                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scope, GlobalFunctionTable);
                 if (target.isStrict)
                 {
                     if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
@@ -231,58 +226,58 @@ for (const auto& token : instr.expression)
                 }
                 else
                 {
-                    getVariable(instr.vardata.name).value = value;
+                    getVariable2(instr.vardata.name, scope).value = value;
                 }
             }
+            continue;
         }
         else if (instr.type == Instruction::Types::If)
         {
-            scopeStack.push_back(VariableTable{});
+            scope.push_back(VariableTable{});
 
-            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack,GlobalFunctionTable)))
+            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scope, GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body);
+                ExecutionResult result = interpret(instr.body, scope);
 
-                if (result.didReturn = true)
+                if (result.didReturn == true)
                 {
-                    scopeStack.pop_back();
+                    scope.pop_back();
                     return result;
                 }
             }
             else if (!instr.elseBody.empty())
             {
-                ExecutionResult result = interpret(instr.elseBody);
+                ExecutionResult result = interpret(instr.elseBody, scope);
 
                 if (result.didReturn)
                 {
-                    scopeStack.pop_back();
+                    scope.pop_back();
                     return result;
                 }
             }
 
-            scopeStack.pop_back();
+            scope.pop_back();
         }
         else if (instr.type == Instruction::Types::While)
         {
-            scopeStack.push_back(VariableTable{});
-            while (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scopeStack,GlobalFunctionTable)) == true)
+            while (variantToBool2(Evaluate(
+                instr.condition,
+                0,
+                instr.condition.size() - 1,
+                scope,
+                GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body);
+                ExecutionResult result = interpret(instr.body, scope);
 
                 if (result.didReturn)
-                {
-                    scopeStack.pop_back();
                     return result;
-                }
             }
-            scopeStack.pop_back();
         }
-        if (instr.type == Instruction::Types::FunctionCall)
+        else if (instr.type == Instruction::Types::FunctionCall)
         {
-
             if (instr.path[0] == "Int")
             { // for casting Int(varname);
-                VariableData &target = getVariable(variantToString2(instr.arguments[0][0].value));
+                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                 if (target.isStrict)
                 {
                     std::cerr << "Cannot cast strict variables";
@@ -298,7 +293,7 @@ for (const auto& token : instr.expression)
             }
             else if (instr.path[0] == "Double")
             { // for casting Int(varname);
-                VariableData &target = getVariable(variantToString2(instr.arguments[0][0].value));
+                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                 if (target.isStrict)
                 {
                     std::cerr << "Cannot cast strict variables";
@@ -320,7 +315,7 @@ for (const auto& token : instr.expression)
                 }
                 for (int k = 0; k < instr.arguments.size(); k++)
                 {
-                    scopeStack.back().erase(variantToString2(instr.arguments[k][0].value));
+                    scope.back().erase(variantToString2(instr.arguments[k][0].value));
                 }
             }
             else if (instr.path[0] == "Terminal")
@@ -336,7 +331,7 @@ for (const auto& token : instr.expression)
                         }
                         else
                         {
-                            VariableData &target = getVariable(variantToString2(instr.arguments[0][0].value));
+                            VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                             if (!target.isConst)
                             {
                                 if (target.vartype == VariableTypes::String || !target.isStrict)
@@ -372,7 +367,7 @@ for (const auto& token : instr.expression)
                                 */
                         for (size_t k = 0; k < instr.arguments.size(); k++)
                         {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack,GlobalFunctionTable));
+                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
                         }
                     }
                     else if (instr.path[2] == "println")
@@ -388,13 +383,13 @@ for (const auto& token : instr.expression)
                                 */
                         for (size_t k = 0; k < instr.arguments.size(); k++)
                         {
-                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack,GlobalFunctionTable));
+                            std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
                         }
                         std::cout << "\n";
                     }
                     else
                     {
-                        std::cerr << "Unknown identifier " << instr.path[2] << "\n";
+                        std::cerr << "Unknown identifier 1" << instr.path[2] << "\n";
                     }
                 }
                 else if (instr.path[1] == "clear")
@@ -410,12 +405,12 @@ for (const auto& token : instr.expression)
                 }
                 else
                 {
-                    std::cerr << "Unknown identifier " << instr.path[1] << "\n";
+                    std::cerr << "Unknown identifier 2" << instr.path[1] << "\n";
                 }
             }
             else if (isInFunctions(instr.path[0], GlobalFunctionTable))
             {
-                auto targetFunc = GlobalFunctionTable[instr.path[0]];
+                GFunction &targetFunc = GlobalFunctionTable[instr.path[0]];
                 size_t count = std::min(instr.arguments.size(), targetFunc.locals.size());
                 if (instr.arguments.size() != targetFunc.locals.size())
                 {
@@ -425,14 +420,14 @@ for (const auto& token : instr.expression)
                               << " arguments but got "
                               << instr.arguments.size()
                               << "\n";
-                              ExecutionResult result;
-                              result.didReturn = false;
-                              result.returnValue  = nullptr;
+                    ExecutionResult result;
+                    result.didReturn = false;
+                    result.returnValue = nullptr;
                     return result;
                 }
                 for (int k = 0; k < count; k++)
                 {
-                    targetFunc.locals[k].value = Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scopeStack,GlobalFunctionTable);
+                    targetFunc.locals[k].value = Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable);
                 }
                 VariableTable bufferTable;
 
@@ -441,11 +436,10 @@ for (const auto& token : instr.expression)
 
                     bufferTable[var.name] = var;
                 }
-                scopeStack.push_back(bufferTable);
-                ExecutionResult Return = interpret(targetFunc.body);
+                scope.push_back(bufferTable);
+                ExecutionResult Return = interpret(targetFunc.body, scope);
 
-                scopeStack.pop_back();
-
+                scope.pop_back();
                 if (Return.didReturn)
                 {
                     return Return;
@@ -453,7 +447,7 @@ for (const auto& token : instr.expression)
             }
             else
             {
-                std::cerr << "Unknown identifier " << instr.path[0] << "\n";
+                std::cerr << "Unknown identifier 3" << instr.path[0] << "\n";
             }
         }
     }

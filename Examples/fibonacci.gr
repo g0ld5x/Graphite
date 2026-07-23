@@ -8,4 +8,4 @@ fn fib(int n)
     return fib(n - 1) + fib(n - 2);
 }
 
-Terminal.IO.println(fib(30));
+Terminal.IO.println(fib(25));

@@ -235,14 +235,14 @@ bool variantToBool(const Value &value)
 Value ExecuteFunction(
     const std::string &name,
     const std::vector<std::vector<Token>> &arguments,
-    FunctionTable& ftable,
-    ScopeStack& scopeStack)
+    FunctionTable &ftable,
+    ScopeStack &scopeStack)
 {
     auto it = ftable.find(name);
 
     if (it == ftable.end())
     {
-        std::cout << "Error: function " << name << " does not exist\n";
+        std::cerr << "Error: function " << name << " does not exist\n";
         return nullptr;
     }
 
@@ -250,7 +250,7 @@ Value ExecuteFunction(
 
     if (arguments.size() != targetFunc.locals.size())
     {
-        std::cout << "Error: function " << name
+        std::cerr << "Error: function " << name
                   << " expected "
                   << targetFunc.locals.size()
                   << " arguments but got "
@@ -276,13 +276,8 @@ Value ExecuteFunction(
     }
 
     scopeStack.push_back(bufferTable);
-std::cout << "Function scope variables:\n";
 
-for(auto& [name, value] : scopeStack.back())
-{
-    std::cout << name << "\n";
-}
-    ExecutionResult result = interpret(targetFunc.body);
+    ExecutionResult result = interpret(targetFunc.body, scopeStack);
 
     scopeStack.pop_back();
 
@@ -294,17 +289,33 @@ for(auto& [name, value] : scopeStack.back())
     return Value{};
 }
 
-Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack& scope, FunctionTable& functionTable)
+Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack &scope, FunctionTable &functionTable)
 {
 
-    if (tokens[left].type == TokenType::Identifier &&
-        left + 1 <= right &&
-        tokens[left + 1].type == TokenType::LParen &&
-        tokens[right].type == TokenType::RParen)
+if (tokens[left].type == TokenType::Identifier &&
+    left + 1 <= right &&
+    tokens[left + 1].type == TokenType::LParen)
+{
+    int depth = 1;
+    int closing = left + 1;
+
+    while (++closing <= right)
     {
-        std::cout << "Calling function: "
-                  << variantToString(tokens[left].value)
-                  << "\n";
+        if (tokens[closing].type == TokenType::LParen)
+            depth++;
+        else if (tokens[closing].type == TokenType::RParen)
+        {
+            depth--;
+            if (depth == 0)
+                break;
+        }
+    }
+
+    // Only execute immediately if the function call
+    // spans the ENTIRE expression.
+    if (closing == right)
+    {
+
         std::vector<std::vector<Token>> bufferArg(1);
 
         int paranDepth = 1;
@@ -340,17 +351,14 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         {
             bufferArg.clear();
         }
-        std::cout << "Function token type: "
-                  << (int)tokens[left].type << "\n";
-        std::cout << "Function name: "
-                  << variantToString(tokens[left].value)
-                  << "\n";
+
         return ExecuteFunction(
             variantToString(tokens[left].value),
             bufferArg,
             functionTable,
             scope);
     }
+}
     // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
 
     // Invalid range
@@ -486,13 +494,7 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         }
         else
         {
-            int intVal = variantToInt(lhs) + variantToInt(rhs);
-            int doubVal = variantToDouble(lhs) + variantToDouble(rhs);
-            if (intVal == doubVal)
-            {
-                return intVal;
-            }
-            return doubVal;
+            return variantToDouble(lhs) + variantToDouble(rhs);
         }
 
     case TokenType::Minus:
@@ -791,6 +793,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                         else if (input[i].type == TokenType::RParen)
                         {
                             paranDepth--;
+
                             if (paranDepth == 0)
                                 break;
                         }
@@ -802,6 +805,13 @@ std::vector<Instruction> parse(std::vector<Token> input)
                     }
                 }
 
+                // Ignore newlines between condition and {
+                while (i + 1 < input.size() && input[i + 1].type == TokenType::NewLine)
+                {
+                    i++;
+                }
+
+                // Parse body
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::LCurl)
                 {
                     curlyDepth++;
@@ -820,6 +830,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
                         else if (input[i].type == TokenType::RCurl)
                         {
                             curlyDepth--;
+
                             if (curlyDepth == 0)
                                 break;
                         }
@@ -832,6 +843,7 @@ std::vector<Instruction> parse(std::vector<Token> input)
 
                     instr.body = parse(bodyTokens);
                 }
+
                 instructions.push_back(instr);
             }
             else if (value == "if")
@@ -868,7 +880,10 @@ std::vector<Instruction> parse(std::vector<Token> input)
                         }
                     }
                 }
-
+                while (i + 1 < input.size() && input[i + 1].type == TokenType::NewLine)
+                {
+                    i++;
+                }
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::LCurl)
                 {
                     curlyDepth++;
@@ -901,7 +916,10 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 }
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier && variantToString(input[i + 1].value) == "else")
                 {
-
+                    while (i + 1 < input.size() && input[i + 1].type == TokenType::NewLine)
+                    {
+                        i++;
+                    }
                     if (i + 2 < input.size() && input[i + 2].type == TokenType::LCurl)
                     {
                         curlyDepth++;
@@ -975,21 +993,22 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 }
                 instructions.push_back(instr);
             }
-            else if (value == "return")
-            {
-                instr.type = Instruction::Types::Return;
+else if (value == "return")
+{
+    instr.type = Instruction::Types::Return;
 
-                i++; // move past return
+    i++;
 
-                while (input[i].type != TokenType::Semicolon &&
-                       input[i].type != TokenType::NewLine)
-                {
-                    instr.expression.push_back(input[i]);
-                    i++;
-                }
 
-                instructions.push_back(instr);
-            }
+    while (input[i].type != TokenType::Semicolon &&
+           input[i].type != TokenType::NewLine)
+    {
+        instr.expression.push_back(input[i]);
+        i++;
+    }
+
+    instructions.push_back(instr);
+}
             else if (value == "const")
             {
                 int paranDepth = 0;
@@ -1040,87 +1059,90 @@ std::vector<Instruction> parse(std::vector<Token> input)
                 i = j; // skip the whole expression
 
                 instructions.push_back(instr);
+                continue;
             }
-            else
+            else if (
+                (i + 1 < input.size() &&
+                 (input[i + 1].type == TokenType::LParen ||
+                  input[i + 1].type == TokenType::Dot)))
             {
                 instr.type = Instruction::Types::FunctionCall;
 
-while (i < input.size() && input[i].type == TokenType::Identifier)
-{
-    instr.path.push_back(variantToString(input[i].value));
-
-    if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
-    {
-        i += 2;
-        continue;
-    }
-
-    else if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
-    {
-        i++; // move to '('
-
-        int argCount = 0;
-        int paranDepth = 1;
-
-        while (i + 1 < input.size() && paranDepth != 0)
-        {
-            i++;
-
-            Token current = input[i];
-
-            if (current.type == TokenType::LParen)
-            {
-                paranDepth++;
-
-                // store nested '('
-                if (paranDepth > 1)
+                while (i < input.size() && input[i].type == TokenType::Identifier)
                 {
-                    if (instr.arguments.size() <= argCount)
-                        instr.arguments.resize(argCount + 1);
+                    instr.path.push_back(variantToString(input[i].value));
 
-                    instr.arguments[argCount].push_back(current);
+                    if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
+                    {
+                        i += 2;
+                        continue;
+                    }
+
+                    else if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
+                    {
+                        i++; // move to '('
+
+                        int argCount = 0;
+                        int paranDepth = 1;
+
+                        while (i + 1 < input.size() && paranDepth != 0)
+                        {
+                            i++;
+
+                            Token current = input[i];
+
+                            if (current.type == TokenType::LParen)
+                            {
+                                paranDepth++;
+
+                                // store nested '('
+                                if (paranDepth > 1)
+                                {
+                                    if (instr.arguments.size() <= argCount)
+                                        instr.arguments.resize(argCount + 1);
+
+                                    instr.arguments[argCount].push_back(current);
+                                }
+                            }
+
+                            else if (current.type == TokenType::RParen)
+                            {
+                                paranDepth--;
+
+                                // store nested ')' but not the function's closing ')'
+                                if (paranDepth > 0)
+                                {
+                                    if (instr.arguments.size() <= argCount)
+                                        instr.arguments.resize(argCount + 1);
+
+                                    instr.arguments[argCount].push_back(current);
+                                }
+                            }
+
+                            else if (current.type == TokenType::Comma && paranDepth == 1)
+                            {
+                                argCount++;
+                            }
+
+                            else
+                            {
+                                if (instr.arguments.size() <= argCount)
+                                    instr.arguments.resize(argCount + 1);
+
+                                instr.arguments[argCount].push_back(current);
+                            }
+                        }
+
+                        // Remove empty argument caused by ()
+                        if (instr.arguments.size() == 1 && instr.arguments[0].empty())
+                        {
+                            instr.arguments.clear();
+                        }
+                    }
+
+                    break;
                 }
-            }
-
-            else if (current.type == TokenType::RParen)
-            {
-                paranDepth--;
-
-                // store nested ')' but not the function's closing ')'
-                if (paranDepth > 0)
-                {
-                    if (instr.arguments.size() <= argCount)
-                        instr.arguments.resize(argCount + 1);
-
-                    instr.arguments[argCount].push_back(current);
-                }
-            }
-
-            else if (current.type == TokenType::Comma && paranDepth == 1)
-            {
-                argCount++;
-            }
-
-            else
-            {
-                if (instr.arguments.size() <= argCount)
-                    instr.arguments.resize(argCount + 1);
-
-                instr.arguments[argCount].push_back(current);
-            }
-        }
-
-        // Remove empty argument caused by ()
-        if (instr.arguments.size() == 1 && instr.arguments[0].empty())
-        {
-            instr.arguments.clear();
-        }
-    }
-
-    break;
-}
-
-instructions.push_back(instr);
+                instructions.push_back(instr);
             }
         }
     }

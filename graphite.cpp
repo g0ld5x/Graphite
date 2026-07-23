@@ -10,7 +10,8 @@
 #include <fstream>
 int main(int argc, char* argv[])
 {
-    initInterpreter();
+    ScopeStack scope;
+    initInterpreter(scope);
     if(argc == 1){ //repl mode
     bool debugMode = false;
     while (true)
@@ -38,7 +39,7 @@ int main(int argc, char* argv[])
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        interpret(parse(lex(input)));
+        interpret(parse(lex(input)),scope);
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "\n";
         if(debugMode)
@@ -51,19 +52,12 @@ int main(int argc, char* argv[])
         free(input);
     }
     }
+    bool debugMode = false;
     for (int i = 1; i < argc; i++)
     {
         std::string currentArg = argv[i];
-
-        if (currentArg.rfind("--", 0) == 0)
-        {
-            if (currentArg == "--help")
-            {
-                std::cout << "Provide the file name to interpret it.";
-            }
-        }
-        else
-        {
+        
+        
             std::ifstream File(currentArg);
 
             if (!File)
@@ -76,7 +70,14 @@ int main(int argc, char* argv[])
             buffer << File.rdbuf();
 
             std::string source = buffer.str();
-            interpret(parse(lex(source)));
-        }
+            auto start = std::chrono::high_resolution_clock::now();
+            interpret(parse(lex(source)),scope);
+            auto end = std::chrono::high_resolution_clock::now();
+
+                            std::cout << "\n Execution Time: "
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+                      << " miliseconds\n";
+            
+        
     }
 }
