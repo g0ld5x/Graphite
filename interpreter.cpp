@@ -52,6 +52,7 @@ std::string join(const std::vector<std::string> &elements, const std::string &de
     if (elements.empty())
         return "";
 
+
     size_t total_length = 0;
     for (const auto &s : elements)
         total_length += s.length();
@@ -145,15 +146,15 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         {
             GFunction &func = GlobalFunctionTable[instr.Funcname];
 
-            func.body = std::move(instr.body);
-            func.isStrict = std::move(instr.isStrict);
-            func.name = std::move(instr.Funcname);
-            func.locals = std::move(instr.locals);
+            func.body = instr.body;
+            func.isStrict = instr.isStrict;
+            func.name = instr.Funcname;
+            func.locals = instr.locals;
             func.isVoid = true;
         }
         else if (instr.type == Instruction::Types::Space)
         {
-            interpret(std::move(instr.body), scope);
+            interpret(instr.body, scope);
         }
         else if (instr.type == Instruction::Types::Return)
         {
@@ -211,7 +212,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         }
         else if (instr.type == Instruction::Types::Assign)
         { // for things like var x = 32;
-            VariableData &target = getVariable2(std::move(instr.vardata.name), scope);
+            VariableData &target = getVariable2(instr.vardata.name, scope);
             if (target.isConst)
             {
                 std::cerr << "Cant change the value of a constant. \n";
@@ -219,7 +220,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else
             {
 
-                const Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scope, GlobalFunctionTable);
+                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scope, GlobalFunctionTable);
                 if (target.isStrict)
                 {
                     if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
@@ -245,7 +246,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
                 else
                 {
-                    getVariable2(instr.vardata.name, scope).value = std::move(value);
+                    getVariable2(instr.vardata.name, scope).value = value;
                 }
             }
             continue;
@@ -256,7 +257,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
             if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scope, GlobalFunctionTable)))
             {
-                const ExecutionResult & result = interpret(instr.body, scope);
+                ExecutionResult result = interpret(instr.body, scope);
 
                 if (result.didReturn == true)
                 {
@@ -266,7 +267,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (!instr.elseBody.empty())
             {
-                const ExecutionResult & result = interpret(instr.elseBody, scope);
+                ExecutionResult result = interpret(instr.elseBody, scope);
 
                 if (result.didReturn)
                 {
@@ -286,7 +287,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 scope,
                 GlobalFunctionTable)))
             {
-                const ExecutionResult & result = interpret(instr.body, scope);
+                ExecutionResult result = interpret(instr.body, scope);
 
                 if (result.didReturn)
                     return result;
@@ -429,9 +430,9 @@ else if (auto funcIt = GlobalFunctionTable.find(path);
     {
         targetFunc.locals[k].value =
             Evaluate(
-                std::move(instr.arguments[k]),
+                instr.arguments[k],
                 0,
-                std::move(instr.arguments[k]).size() - 1,
+                instr.arguments[k].size() - 1,
                 scope,
                 GlobalFunctionTable
             );
@@ -448,7 +449,7 @@ else if (auto funcIt = GlobalFunctionTable.find(path);
         bufferTable.emplace(var.name, var);
     }
 
-    const ExecutionResult & Return = interpret(targetFunc.body, scope);
+    ExecutionResult Return = interpret(targetFunc.body, scope);
 
     scope.pop_back();
 
