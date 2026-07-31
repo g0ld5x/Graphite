@@ -1,19 +1,15 @@
 #include "parser.h"
 #include <string>
 #include <vector>
-#include <memory>
-#include <numbers>
-#include <format>
 #include <algorithm>
 #include <variant>
 #include "lexer.h"
 #include "interpreter.h"
 #include <iostream>
-#include <numeric>
 #include <math.h>
 #include <sstream>
-#include <climits>
-#include <print>
+
+
 
 bool variantToBool2(const Value &value)
 {
@@ -56,7 +52,6 @@ std::string join(const std::vector<std::string> &elements, const std::string &de
     if (elements.empty())
         return "";
 
-    // Calculate total length to allocate memory at once
     size_t total_length = 0;
     for (const auto &s : elements)
         total_length += s.length();
@@ -150,25 +145,21 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         {
             GFunction &func = GlobalFunctionTable[instr.Funcname];
 
-            func.body = instr.body;
-            func.isStrict = instr.isStrict;
-            func.name = instr.Funcname;
-            func.locals = instr.locals;
+            func.body = std::move(instr.body);
+            func.isStrict = std::move(instr.isStrict);
+            func.name = std::move(instr.Funcname);
+            func.locals = std::move(instr.locals);
             func.isVoid = true;
         }
         else if (instr.type == Instruction::Types::Space)
         {
-            interpret(instr.body, scope);
+            interpret(std::move(instr.body), scope);
         }
         else if (instr.type == Instruction::Types::Return)
         {
 
             ExecutionResult exec;
             exec.didReturn = true;
-
-            for (const auto &token : instr.expression)
-            {
-            }
             exec.returnValue = Evaluate(
                 instr.expression,
                 0,
@@ -210,17 +201,17 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             if (instr.vardata.isGlobal)
             {
 
-                scope.front()[instr.vardata.name] = instr.vardata;
+                scope.front()[instr.vardata.name] = std::move(instr.vardata);
             }
             else
             {
 
-                scope.back()[instr.vardata.name] = instr.vardata;
+                scope.back()[instr.vardata.name] = std::move(instr.vardata);
             }
         }
         else if (instr.type == Instruction::Types::Assign)
         { // for things like var x = 32;
-            VariableData &target = getVariable2(instr.vardata.name, scope);
+            VariableData &target = getVariable2(std::move(instr.vardata.name), scope);
             if (target.isConst)
             {
                 std::cerr << "Cant change the value of a constant. \n";
@@ -228,24 +219,24 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else
             {
 
-                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scope, GlobalFunctionTable);
+                const Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scope, GlobalFunctionTable);
                 if (target.isStrict)
                 {
                     if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
                     {
-                        target.value = value;
+                        target.value = std::move(value);
                     }
                     else if (std::holds_alternative<std::string>(value) && instr.vardata.vartype == VariableTypes::String)
                     {
-                        target.value = value;
+                        target.value = std::move(value);
                     }
                     else if (std::holds_alternative<double>(value) && instr.vardata.vartype == VariableTypes::Double)
                     {
-                        target.value = value;
+                        target.value = std::move(value);
                     }
                     else if (std::holds_alternative<bool>(value) && instr.vardata.vartype == VariableTypes::Bool)
                     {
-                        target.value = value;
+                        target.value = std::move(value);
                     }
                     else
                     {
@@ -254,7 +245,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
                 else
                 {
-                    getVariable2(instr.vardata.name, scope).value = value;
+                    getVariable2(instr.vardata.name, scope).value = std::move(value);
                 }
             }
             continue;
@@ -265,7 +256,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
             if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scope, GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope);
+                const ExecutionResult & result = interpret(instr.body, scope);
 
                 if (result.didReturn == true)
                 {
@@ -275,7 +266,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (!instr.elseBody.empty())
             {
-                ExecutionResult result = interpret(instr.elseBody, scope);
+                const ExecutionResult & result = interpret(instr.elseBody, scope);
 
                 if (result.didReturn)
                 {
@@ -295,7 +286,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 scope,
                 GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope);
+                const ExecutionResult & result = interpret(instr.body, scope);
 
                 if (result.didReturn)
                     return result;
@@ -413,43 +404,59 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     }
                 }
             }
-            else if (isInFunctions(path, GlobalFunctionTable))
-            {
-                GFunction &targetFunc = GlobalFunctionTable[path];
-                size_t count = std::min(instr.arguments.size(), targetFunc.locals.size());
-                if (instr.arguments.size() != targetFunc.locals.size())
-                {
-                    std::cerr << "Error: function " << path
-                              << " expected "
-                              << targetFunc.locals.size()
-                              << " arguments but got "
-                              << instr.arguments.size()
-                              << "\n";
-                    ExecutionResult result;
-                    result.didReturn = false;
-                    result.returnValue = nullptr;
-                    return result;
-                }
-                for (int k = 0; k < count; k++)
-                {
-                    targetFunc.locals[k].value = Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable);
-                }
-                VariableTable bufferTable;
+else if (auto funcIt = GlobalFunctionTable.find(path);
+         funcIt != GlobalFunctionTable.end())
+{
+    GFunction& targetFunc = funcIt->second;
 
-                for (const auto &var : targetFunc.locals)
-                {
+    if (instr.arguments.size() != targetFunc.locals.size())
+    {
+        std::cerr << "Error: function " << path
+                  << " expected "
+                  << targetFunc.locals.size()
+                  << " arguments but got "
+                  << instr.arguments.size()
+                  << "\n";
 
-                    bufferTable[var.name] = var;
-                }
-                scope.push_back(bufferTable);
-                ExecutionResult Return = interpret(targetFunc.body, scope);
+        ExecutionResult result;
+        result.didReturn = false;
+        result.returnValue = nullptr;
+        return result;
+    }
 
-                scope.pop_back();
-                if (Return.didReturn)
-                {
-                    return Return;
-                }
-            }
+    // Evaluate arguments
+    for (size_t k = 0; k < instr.arguments.size(); k++)
+    {
+        targetFunc.locals[k].value =
+            Evaluate(
+                std::move(instr.arguments[k]),
+                0,
+                std::move(instr.arguments[k]).size() - 1,
+                scope,
+                GlobalFunctionTable
+            );
+    }
+
+    // Create new scope directly
+    scope.emplace_back();
+    VariableTable& bufferTable = scope.back();
+
+    bufferTable.reserve(targetFunc.locals.size());
+
+    for (const auto& var : targetFunc.locals)
+    {
+        bufferTable.emplace(var.name, var);
+    }
+
+    const ExecutionResult & Return = interpret(targetFunc.body, scope);
+
+    scope.pop_back();
+
+    if (Return.didReturn)
+    {
+        return Return;
+    }
+}
             else
             {
                 std::cerr << "Unknown function '" << path << "' \n";

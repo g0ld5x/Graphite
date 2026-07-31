@@ -8,7 +8,7 @@ def fib(n):
         return n
     return fib(n-1)+fib(n-2)
 
-print(fib(30));
+print(fib(25));
 
 end_time = time.perf_counter()
 

@@ -1,9 +1,9 @@
+#include <chrono>
 #include <iostream>
 #include <cstring>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "lexer.h"
-#include "chrono"
 #include "parser.h"
 #include "interpreter.h"
 #include <sstream>
@@ -14,6 +14,7 @@ int main(int argc, char* argv[])
     ScopeStack scope;
     initInterpreter(scope);
     if(argc == 1){ //repl mode
+    std::cout << "Graphite version-0.1 \n";
     bool debugMode = false;
     while (true)
     {

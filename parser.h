@@ -57,7 +57,8 @@ struct Instruction
         FunctionCall,
         Command,
         Return,
-        Space
+        Space,
+        Import
     };
     Types type;
     std::vector<std::string> path;

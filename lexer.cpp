@@ -1,9 +1,7 @@
 #include "lexer.h"
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <iterator>
-
+#include <string_view>
 /*     std::vector<Token> tokens; <-- example in creating a token and then appending it to tokens
 
     Token t;
@@ -45,14 +43,14 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Plus;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '(')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::LParen;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
 
             else if (c == '{')
@@ -60,14 +58,14 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::LCurl;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '}')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::RCurl;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
 
             else if (c == '[')
@@ -75,21 +73,21 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::LBrac;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == ']')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::RBrac;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '\n')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::NewLine;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
                 column = 0;
                 line++;
             }
@@ -98,21 +96,21 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::RParen;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '-')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Minus;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '*')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Multiply;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '/')
             {
@@ -134,7 +132,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::Division;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                     column++;
                 }
             }
@@ -145,7 +143,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::NotEqual;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                     i++;
                 }
                 else
@@ -153,7 +151,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::Not;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
             }
             else if (c == '>')
@@ -163,7 +161,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::BiggerEqual;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                     i++;
                 }
                 else
@@ -171,7 +169,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::Bigger;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
             }
             else if (c == '<')
@@ -181,7 +179,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::SmallerEqual;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                     i++;
                 }
                 else
@@ -189,7 +187,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::Smaller;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
             }
             else if (c == '=')
@@ -199,7 +197,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::EqualEqual;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                     i++;
                 }
                 else
@@ -207,7 +205,7 @@ std::vector<Token> lex(const std::string &input)
                     token.line = line;
                     token.column = column;
                     token.type = TokenType::Equals;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
             }
             else if (c == ';')
@@ -215,21 +213,21 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Semicolon;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == ',')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Comma;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '.')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Dot;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '&' && i + 1 < input.size() && input[i + 1] == '&')
             {
@@ -237,7 +235,7 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::AndAnd;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
 
                 i++;
                 continue;
@@ -248,7 +246,7 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::OrOr;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
 
                 i++;
                 continue;
@@ -262,34 +260,35 @@ std::vector<Token> lex(const std::string &input)
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Power;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (c == '%')
             {
                 token.line = line;
                 token.column = column;
                 token.type = TokenType::Remainder;
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (std::isdigit(c))
             {
-                std::string number;
+                double value = 0.0;
 
                 while (i < input.size() && std::isdigit(input[i]))
                 {
-                    number += input[i];
+                    value = value * 10.0 + (input[i] - '0');
                     i++;
                 }
 
-                // Decimal part
                 if (i < input.size() && input[i] == '.')
                 {
-                    number += '.';
                     i++;
+
+                    double divisor = 10.0;
 
                     while (i < input.size() && std::isdigit(input[i]))
                     {
-                        number += input[i];
+                        value += (input[i] - '0') / divisor;
+                        divisor *= 10.0;
                         i++;
                     }
                 }
@@ -298,17 +297,9 @@ std::vector<Token> lex(const std::string &input)
 
                 Token token;
                 token.type = TokenType::Number;
+                token.value = value;
 
-                if (number.find('.') != std::string::npos)
-                {
-                    token.value = std::stod(number);
-                }
-                else
-                {
-                    token.value = std::stoi(number);
-                }
-
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
             }
             else if (isLetter(c) || c == '_')
             {
@@ -325,32 +316,32 @@ std::vector<Token> lex(const std::string &input)
                 {
                     Token token;
                     token.type = TokenType::Not;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
                 else if (value == "and")
                 {
                     Token token;
                     token.type = TokenType::AndAnd;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
                 else if (value == "or")
                 {
                     Token token;
                     token.type = TokenType::OrOr;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
                 else if (value == "is")
                 {
                     Token token;
                     token.type = TokenType::EqualEqual;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
                 else
                 {
                     Token token;
                     token.type = TokenType::Identifier;
                     token.value = value;
-                    tokens.push_back(token);
+                    tokens.push_back(std::move(token));
                 }
             }
         }
@@ -362,8 +353,8 @@ std::vector<Token> lex(const std::string &input)
             {
                 stringMode = !stringMode;
                 token.type = TokenType::String;
-                token.value = buffer;
-                tokens.push_back(token);
+                token.value = std::move(buffer);
+                tokens.push_back(std::move(token));
                 buffer.clear();
             }
             else
@@ -379,7 +370,7 @@ std::vector<Token> lex(const std::string &input)
         token.line = line;
         token.column = column;
         token.errorMessage = "String not closed!";
-        tokens.push_back(token);
+        tokens.push_back(std::move(token));
     }
     Token token;
     token.type = TokenType::EndOfFile;

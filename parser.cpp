@@ -2,9 +2,6 @@
 #include "interpreter.h"
 #include <string>
 #include <vector>
-#include <memory>
-#include <numbers>
-#include <format>
 #include <algorithm>
 #include <variant>
 #include "lexer.h"
@@ -54,30 +51,22 @@ bool stringToBool(const std::string &str)
     return false;
 }
 
-double variantToDouble(const Value &value)
+inline double variantToDouble(const Value& value)
 {
-    if (const auto *p = std::get_if<double>(&value))
-        return *p;
-
-    if (const auto *p = std::get_if<int>(&value))
-        return static_cast<double>(*p);
-
-    if (const auto *p = std::get_if<bool>(&value))
-        return *p ? 1.0 : 0.0;
-
-    if (const auto *p = std::get_if<std::string>(&value))
+    switch(value.index())
     {
-        try
-        {
-            return std::stod(*p);
-        }
-        catch (...)
-        {
-            return 0.0;
-        }
-    }
+        case 0:
+            return std::get<int>(value);
 
-    return 0.0;
+        case 1:
+            return std::get<double>(value);
+
+        case 2:
+            return std::get<bool>(value) ? 1.0 : 0.0;
+
+        default:
+            return 0.0;
+    }
 }
 
 int variantToInt(const Value &value)
@@ -106,7 +95,7 @@ int variantToInt(const Value &value)
     return 0;
 }
 
-int precedence(TokenType type)
+constexpr int precedence(TokenType type)
 {
     switch (type)
     {
@@ -287,7 +276,7 @@ Value ExecuteFunction(
 
     for (size_t k = 0; k < arguments.size(); k++)
     {
-        VariableData var = targetFunc.locals[k];
+        VariableData & var = targetFunc.locals[k];
 
         var.value =
             Evaluate(arguments[k],
@@ -298,7 +287,7 @@ Value ExecuteFunction(
         bufferTable[var.name] = var;
     }
 
-    scopeStack.push_back(bufferTable);
+    scopeStack.push_back(std::move(bufferTable));
 
     ExecutionResult result = interpret(targetFunc.body, scopeStack);
 
@@ -376,7 +365,7 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
                     if (currentToken.type == TokenType::LParen)
                     {
                         argDepth++;
-                        current.push_back(currentToken);
+                        current.push_back(std::move(currentToken));
                     }
                     else if (currentToken.type == TokenType::RParen)
                     {
@@ -385,22 +374,22 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
                         if (argDepth == 0)
                         {
                             if (!current.empty())
-                                bufferArg.push_back(current);
+                                bufferArg.push_back(std::move(current));
 
                             break;
                         }
 
-                        current.push_back(currentToken);
+                        current.push_back(std::move(currentToken));
                     }
                     else if (currentToken.type == TokenType::Comma &&
                              argDepth == 1)
                     {
-                        bufferArg.push_back(current);
+                        bufferArg.push_back(std::move(current));
                         current.clear();
                     }
                     else
                     {
-                        current.push_back(currentToken);
+                        current.push_back(std::move(currentToken));
                     }
                 }
 
@@ -410,20 +399,18 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
                 {
                     if (tokens[i].type == TokenType::Identifier)
                     {
-                        funcPath.push_back(
-                            variantToString(tokens[i].value));
+                        funcPath.push_back(std::get<std::string>(tokens[i].value));
                     }
                 }
 
                 return ExecuteFunction(
                     joinpath(funcPath, "."),
-                    bufferArg,
+                    std::move(bufferArg),
                     functionTable,
                     scope);
             }
         }
     }
-    // some basic predefined variables to test the evaluator and also provide ease for simple calculations.
 
     // Invalid range
     if (left > right)
@@ -435,13 +422,13 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         if (tokens[left].type == TokenType::Identifier)
         {
             VariableData *variable = getVariable(
-                variantToString(tokens[left].value),
+                std::get<std::string>(tokens[left].value),
                 scope);
 
             if (variable == nullptr)
             {
                 throw std::runtime_error(
-                    "Unknown identifier in eval " + variantToString(tokens[left].value));
+                    "Unknown identifier in eval " + std::get<std::string>(tokens[left].value));
             }
 
             return variable->value;
@@ -482,7 +469,7 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
     // Prefix unary operators
     if (isUnary(tokens, left))
     {
-        Value rhs = Evaluate(tokens, left + 1, right, scope, functionTable);
+        const Value & rhs =  Evaluate(tokens, left + 1, right, scope, functionTable);
 
         switch (tokens[left].type)
         {
@@ -546,8 +533,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
     if (split == -1)
         throw std::runtime_error("No operator found.");
 
-    Value lhs = Evaluate(tokens, left, split - 1, scope, functionTable);
-    Value rhs = Evaluate(tokens, split + 1, right, scope, functionTable);
+    Value  lhs = Evaluate(tokens, left, split - 1, scope, functionTable);
+    Value  rhs = Evaluate(tokens, split + 1, right, scope, functionTable);
     switch (tokens[split].type)
     {
 
@@ -610,11 +597,11 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
 
     case TokenType::EqualEqual:
     {
-        bool lhsNumeric =
+        const bool lhsNumeric =
             std::holds_alternative<int>(lhs) ||
             std::holds_alternative<double>(lhs);
 
-        bool rhsNumeric =
+        const bool rhsNumeric =
             std::holds_alternative<int>(rhs) ||
             std::holds_alternative<double>(rhs);
 
@@ -625,11 +612,11 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
     }
     case TokenType::NotEqual:
     {
-        bool lhsNumeric =
+        const bool lhsNumeric =
             std::holds_alternative<int>(lhs) ||
             std::holds_alternative<double>(lhs);
 
-        bool rhsNumeric =
+        const bool rhsNumeric =
             std::holds_alternative<int>(rhs) ||
             std::holds_alternative<double>(rhs);
 
@@ -641,11 +628,11 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
 
     case TokenType::Bigger:
     {
-        bool lhsNumeric =
+        const bool lhsNumeric =
             std::holds_alternative<int>(lhs) ||
             std::holds_alternative<double>(lhs);
 
-        bool rhsNumeric =
+        const bool rhsNumeric  =
             std::holds_alternative<int>(rhs) ||
             std::holds_alternative<double>(rhs);
 
@@ -832,9 +819,20 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 instr.body = parse(bodyTokens, path);
 
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
 
                 continue;
+            }
+            else if(value == "import"){ //import "std.math.gr"
+                instr.type = Instruction::Types::Import;
+                i++;
+
+                while (input[i].type != TokenType::Semicolon && input[i].type != TokenType::NewLine)
+                {
+                    instr.expression.push_back(input[i]);
+                    i++;
+                }
+                instructions.push_back(std::move(instr));
             }
             else if (value == "while")
             {
@@ -911,7 +909,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     instr.body = parse(bodyTokens, path);
                 }
 
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
             }
             else if (value == "if")
             {
@@ -1018,7 +1016,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         instr.elseBody = parse(elsebodyTokens, path);
                     }
                 }
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
             }
             else if (value == "strict")
             {
@@ -1054,7 +1052,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     continue;
                 }
 
-                i++; // skip {
+                i++;
 
                 std::vector<Token> bodyTokens;
 
@@ -1085,7 +1083,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 path.pop_back();
 
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
 
                 continue;
             }
@@ -1120,7 +1118,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     instr.expression.push_back(input[i + 3]);
                     i++;
                 }
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
             }
             else if (value == "return")
             {
@@ -1135,7 +1133,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     i++;
                 }
 
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
             }
             else if (value == "const")
             {
@@ -1167,7 +1165,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     instr.expression.push_back(input[i + 3]);
                     i++;
                 }
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
             }
             else if (i + 1 < input.size() && input[i + 1].type == TokenType::Equals)
             {
@@ -1184,9 +1182,9 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     j++;
                 }
 
-                i = j; // skip the whole expression
+                i = j;
 
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
                 continue;
             }
             else if (
@@ -1216,7 +1214,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                     else if (i + 1 < input.size() && input[i + 1].type == TokenType::LParen)
                     {
-                        i++; // move to '('
+                        i++;
 
                         int argCount = 0;
                         int paranDepth = 1;
@@ -1230,8 +1228,6 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                             if (current.type == TokenType::LParen)
                             {
                                 paranDepth++;
-
-                                // store nested '('
                                 if (paranDepth > 1)
                                 {
                                     if (instr.arguments.size() <= argCount)
@@ -1245,7 +1241,6 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                             {
                                 paranDepth--;
 
-                                // store nested ')' but not the function's closing ')'
                                 if (paranDepth > 0)
                                 {
                                     if (instr.arguments.size() <= argCount)
@@ -1278,7 +1273,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                     break;
                 }
-                instructions.push_back(instr);
+                instructions.push_back(std::move(instr));
             }
         }
     }
