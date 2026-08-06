@@ -11,6 +11,11 @@ space std{
         Terminal.IO.input(val)
         return val
     }
+    fn input(){
+        var val = ""
+        Terminal.IO.input(val)
+        return val
+    }
     fn clear(){
         Terminal.IO.clear()
     }

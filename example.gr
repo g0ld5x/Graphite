@@ -6,4 +6,4 @@ use
 
 
 
-std.print(std.radianToDegree(30))
+var a = std.input();

@@ -13,14 +13,15 @@
     <a href="https://github.com/g0ld5x/Graphite" target="_blank">Github</a>
     </div>
     <center><h1 id="text" class="Name">Graphite</h1></center>
+    <h2>DISCLAIMER: For all of these examples we will assume that the standard io libary is used. Import it via use {"stdlib/stdio"}</h2>
     <h2>1. Basics</h2>
     <p>In graphite variables are declared via the var keyword. Ex: var x = 3; if you want to make the variables type non changeable. Use the strict keyword. Ex: strict var y = "hello"; y = 3 will give an error because 3 and "hello" are not of the same type. if you want to make a variable global. use the global keyword. if(1==1){global strict var x = 0;} Terminal.IO.println(x); will work because the global keyword was used. There are 4 main data types: Int,String,Double,Bool. If you want to free up variables for some reason, use the free(varname). You can use the const keyword to create a constant. The global and strict keyword can also be used before const.</p>
     <h2>2. Input/Output</h2>
-    <p>To output text into the terminal, use the command Terminal.IO.print() or Terminal.IO.println() to make a newline after the text. You can put as much arguments as you want in Terminal.IO.print() or Terminal.IO.println(), it will print it out. for taking user input, use Terminal.IO.input(varname) where varname is the name of the variable you want the input to be assigned to. To clear the terminal use the Terminal.clear(), clear doesnt accept any arguments.</p>
+    <p>To output text into the terminal, first import the stdio library by doing use{ "stdlib/stdio.gr"} after that you can do std.print("Hello World!"). To take in input use the std.input() function. Ex: var a = input();. To clear the terminal use std.clear(). NOTE: Terminal.IO.print, Terminal.IO.println, Terminal.clear() and Terminal.IO.input() is deprecated!!  </p>
     <h2>3. Functions</h2>
-    <p>To create a function use the fn keyword. Ex: fn test(){Terminal.IO.println("test");} Graphite supports recursion. So you can call functions from inside. Use the global keyword before var if creating a variable in a function,if,else,while and you want it to be accesible from outside.</p>
+    <p>To create a function use the fn keyword. Ex: fn test(){ return 1+1; } Graphite supports recursion. So you can call functions from inside. Use the global keyword before var if creating a variable in a function,if,else,while and you want it to be accesible from outside.</p>
     <h2>4. If Else</h2>
-    <p>To create a if statement, use the if keyword followed by the condition inside parantheses. Ex: if(x==y){Terminal.IO.print("x is equal to y.")}  The else keyword can only be used after a if statement. The statements inside else only happen if the condition of the if statement is false. Ex: if(2==1){Terminal.IO.println("Correct")}else{Terminal.IO.println}</p>
+    <p>To create a if statement, use the if keyword followed by the condition inside parantheses. Ex: if(x==y){std.print("x is equal to y.")}  The else keyword can only be used after a if statement. The statements inside else only happen if the condition of the if statement is false. Ex: if(2==1){std.print("Correct")}else{std.print("False")}</p>
     <h2>5. Operators</h2>
     <p>Comparison operators: is,==,<,>,<=,>=,!= (is and == have the same meaning). Logical operators: ||,&&,and,or (||=or,&&=and). Unary operators: !,-,+ (in some conditions the - and + are unary). Binary Operators: +,-,*,/,^ .</p>
     <h2>6. Casting</h2>
@@ -30,12 +31,19 @@
     <h2>8. Comments</h2>
     <p>You can make command using //. Ex: //this is a command!. Note: Multiline comments haven't been implemented yet but will be implemented.</p>
     <h2>9. Parameters</h2>
-    <p>Parameters can now be used. The parameters type must be defined explicitly. Ex: fn test(string name){Terminal.IO.println(name);} test("John");</p>
+    <p> The parameters type must be defined explicitly (or you can define them without the type but defining with a type is recomended.). Ex: fn test(string name){std.print(name);} test("John");</p>
     <h2>10. Function usage</h2>
     <p>User defined functions can be used inside functions. Ex: fn add(int a,int b){return a+b;} Terminal.IO.println(add(3,2));</p>
     <h2>11. Spaces</h2>
     <p>Spaces are used to organize values together. ex: space Math{ fn add(double a,double b){return a+b} }   Math.add(2,3);</p>
-
+    <h2>12. Imports</h2>
+    <p>You can import files from another folders relative to the current path using use. Ex:   use { "stdlib/math.gh" "stdlib/stdio.gh" "custom.gh"}. You can only write use once per file and you must write it at the top.</p>
+    <h2>13. The standard library</h2>
+    <p>You can use the stdlib/math.gh for functions related to math. You can use the stdlib/stdio.gr for basic IO</p>
+    <h3>stdmath.gr</h3>
+    <p>Functions: max(x,y) , min(x,y) ln(x) for natural log, sin(x),cos(x),tan(x),radToDeg(x),degToRad(y),pi() to get pi,e() to get eulers number. floor(x),  ceil(x), round (x), sqrt(x), cbrt(x),root(x,n), pow(x,y) (you can also use the ^ operator. Ex: 3^2) ,  abs(x)</p>
+    <h3>stdio.gr</h3>
+    <p>Functions: print(val), println(val), input() , clear()</p>
     <center><h1>|Example Programs|</h1></center>
     <h2>Hello World:</h2>
     <h3>HelloWorld.gh</h3>
@@ -101,7 +109,7 @@ Terminal.IO.println(fib(25)); <br>
 </p>
 
 <h2>Delta V Calculator</h2>
-<p>
+<p class="code">
     fn ln(double x) <br>
 { <br>
     if(x <= 0) <br>
