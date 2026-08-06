@@ -1,0 +1,49 @@
+Terminal.IO.println("=== SAYI TAHMIN OYUNU ===");
+Terminal.IO.println("");
+Terminal.IO.println("1. Oyuncu: 1 ile 100 arasinda gizli bir sayi belirle.");
+Terminal.IO.println("Sayiyi girdikten sonra ekran temizlenecek.");
+Terminal.IO.println("");
+
+var gizliSayi = "";
+Terminal.IO.print("Gizli sayini gir: ");
+Terminal.IO.input(gizliSayi);
+Int(gizliSayi);
+
+Terminal.clear();
+
+Terminal.IO.println("=== SAYI TAHMIN OYUNU ===");
+Terminal.IO.println("");
+Terminal.IO.println("2. Oyuncu: 1 ile 100 arasinda bir sayi tutuldu.");
+Terminal.IO.println("7 hakkin var. Bulmaya calis!");
+Terminal.IO.println("");
+
+var hak = 7;
+var kazandi = false;
+
+while(hak > 0 && kazandi is false){
+    Terminal.IO.println("Kalan hakkin: ", hak);
+
+    var tahmin = "";
+    Terminal.IO.print("Tahminini gir: ");
+    Terminal.IO.input(tahmin);
+    Int(tahmin);
+
+    if(tahmin == gizliSayi){
+        Terminal.IO.println("");
+        Terminal.IO.print("Tebrikler! Dogru bildin, sayi ", gizliSayi, " idi.");
+        Terminal.IO.println("");
+        kazandi = true;
+    }else{
+      Terminal.IO.println("Yanlış!");
+      hak = hak-1;
+    }
+}
+
+if(kazandi is true){
+  Terminal.IO.println("Tebrikler kazandınız!")
+}
+
+if(kazandi is false and hak is 0){
+  Terminal.IO.println();
+  Terminal.IO.print("Maalesef kaybettiniz! Doğru sayı: ",gizliSayi," idi...")
+}

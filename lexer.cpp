@@ -1,379 +1,315 @@
 #include "lexer.h"
-#include <string>
+#include <variant>
 #include <vector>
-#include <string_view>
-/*     std::vector<Token> tokens; <-- example in creating a token and then appending it to tokens
-
-    Token t;
-    t.type = TokenType::Identifier;
-    t.value = "writeln";
-
-    tokens.push_back(t);
-
-    return tokens;*/
-
-bool isLetter(char c)
+#include <string>
+#include <iostream>
+#include <math.h>
+inline bool isCharacter(const char & ch)
 {
-    return (c >= 'A' && c <= 'Z') ||
-           (c >= 'a' && c <= 'z') ||
-           (c == '_'); // important for identifiers
+    unsigned char lower = static_cast<unsigned char>(ch) | 0x20;
+    return (static_cast<unsigned char>(lower - 'a') < 26) || (ch == '_');
 }
-std::vector<Token> lex(const std::string &input)
+
+std::vector<Token> lex(std::string_view input)
 {
-    int line = 0;
-    int column = 0;
+    int line = 1;
+    int column = 1;
 
     std::vector<Token> tokens;
-    std::string buffer = "";
-    std::string slashBuffer = "";
-    bool stringMode = false;
-    for (int i = 0; i < input.size(); i++)
+    for (size_t i = 0; i < input.size(); i++)
     {
-        column++;
-        char c = input[i];
-        if (!stringMode)
+        char current = input[i];
+        if (current == '+')
         {
-            if (isspace(c) && c != '\n')
-                continue;
-
             Token token;
-
-            if (c == '+')
+            token.type = TokenType::Plus;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '-')
+        {
+            Token token;
+            token.type = TokenType::Minus;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '/')
+        {
+            Token token;
+            token.type = TokenType::Division;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '*')
+        {
+            Token token;
+            token.type = TokenType::Multiply;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '^')
+        {
+            Token token;
+            token.type = TokenType::Power;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '.')
+        {
+            Token token;
+            token.type = TokenType::Dot;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == ',')
+        {
+            Token token;
+            token.type = TokenType::Comma;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '%')
+        {
+            Token token;
+            token.type = TokenType::Remainder;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == ')')
+        {
+            Token token;
+            token.type = TokenType::RParen;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '(')
+        {
+            Token token;
+            token.type = TokenType::LParen;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == ']')
+        {
+            Token token;
+            token.type = TokenType::RBrac;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '[')
+        {
+            Token token;
+            token.type = TokenType::LBrac;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '}')
+        {
+            Token token;
+            token.type = TokenType::RCurl;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '{')
+        {
+            Token token;
+            token.type = TokenType::LCurl;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '=')
+        {
+            Token token;
+            if (input[i + 1] == '=')
             {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Plus;
-                tokens.push_back(std::move(token));
+                ++i;
+                token.type = TokenType::EqualEqual;
+                tokens.emplace_back(std::move(token));
+                continue;
             }
-            else if (c == '(')
+            token.type = TokenType::Equals;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '&')
+        {
+            Token token;
+            if (input[i + 1] == '&')
             {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::LParen;
-                tokens.push_back(std::move(token));
-            }
-
-            else if (c == '{')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::LCurl;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '}')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::RCurl;
-                tokens.push_back(std::move(token));
-            }
-
-            else if (c == '[')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::LBrac;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == ']')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::RBrac;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '\n')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::NewLine;
-                tokens.push_back(std::move(token));
-                column = 0;
-                line++;
-            }
-            else if (c == ')')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::RParen;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '-')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Minus;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '*')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Multiply;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '/')
-            {
-                if (i + 1 < input.size() && input[i + 1] == '/')
-                {
-                    i += 2;
-                    while (i < input.size() && input[i] != '\n')
-                    {
-                        i++;
-                    }
-                    if (i < input.size() && input[i] == '\n')
-                    {
-                        line++;
-                        column = 1;
-                    }
-                }
-                else
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::Division;
-                    tokens.push_back(std::move(token));
-                    column++;
-                }
-            }
-            else if (c == '!')
-            {
-                if (i + 1 < input.size() && input[i + 1] == '=')
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::NotEqual;
-                    tokens.push_back(std::move(token));
-                    i++;
-                }
-                else
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::Not;
-                    tokens.push_back(std::move(token));
-                }
-            }
-            else if (c == '>')
-            {
-                if (i + 1 < input.size() && input[i + 1] == '=')
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::BiggerEqual;
-                    tokens.push_back(std::move(token));
-                    i++;
-                }
-                else
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::Bigger;
-                    tokens.push_back(std::move(token));
-                }
-            }
-            else if (c == '<')
-            {
-                if (i + 1 < input.size() && input[i + 1] == '=')
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::SmallerEqual;
-                    tokens.push_back(std::move(token));
-                    i++;
-                }
-                else
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::Smaller;
-                    tokens.push_back(std::move(token));
-                }
-            }
-            else if (c == '=')
-            {
-                if (i + 1 < input.size() && input[i + 1] == '=')
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::EqualEqual;
-                    tokens.push_back(std::move(token));
-                    i++;
-                }
-                else
-                {
-                    token.line = line;
-                    token.column = column;
-                    token.type = TokenType::Equals;
-                    tokens.push_back(std::move(token));
-                }
-            }
-            else if (c == ';')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Semicolon;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == ',')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Comma;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '.')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Dot;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '&' && i + 1 < input.size() && input[i + 1] == '&')
-            {
-                Token token;
-                token.line = line;
-                token.column = column;
+                ++i;
                 token.type = TokenType::AndAnd;
-                tokens.push_back(std::move(token));
-
-                i++;
+                tokens.emplace_back(std::move(token));
                 continue;
-            }
-            else if (c == '|' && i + 1 < input.size() && input[i + 1] == '|')
-            {
-                Token token;
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::OrOr;
-                tokens.push_back(std::move(token));
-
-                i++;
-                continue;
-            }
-            else if (c == '"')
-            {
-                stringMode = !stringMode;
-            }
-            else if (c == '^')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Power;
-                tokens.push_back(std::move(token));
-            }
-            else if (c == '%')
-            {
-                token.line = line;
-                token.column = column;
-                token.type = TokenType::Remainder;
-                tokens.push_back(std::move(token));
-            }
-            else if (std::isdigit(c))
-            {
-                double value = 0.0;
-
-                while (i < input.size() && std::isdigit(input[i]))
-                {
-                    value = value * 10.0 + (input[i] - '0');
-                    i++;
-                }
-
-                if (i < input.size() && input[i] == '.')
-                {
-                    i++;
-
-                    double divisor = 10.0;
-
-                    while (i < input.size() && std::isdigit(input[i]))
-                    {
-                        value += (input[i] - '0') / divisor;
-                        divisor *= 10.0;
-                        i++;
-                    }
-                }
-
-                i--;
-
-                Token token;
-                token.type = TokenType::Number;
-                token.value = value;
-
-                tokens.push_back(std::move(token));
-            }
-            else if (isLetter(c) || c == '_')
-            {
-                std::string value = "";
-                while (i < input.size() &&
-                       (isLetter(input[i]) || isdigit(input[i]) || input[i] == '_'))
-                {
-                    value += input[i];
-                    i++;
-                }
-
-                i--;
-                if (value == "not")
-                {
-                    Token token;
-                    token.type = TokenType::Not;
-                    tokens.push_back(std::move(token));
-                }
-                else if (value == "and")
-                {
-                    Token token;
-                    token.type = TokenType::AndAnd;
-                    tokens.push_back(std::move(token));
-                }
-                else if (value == "or")
-                {
-                    Token token;
-                    token.type = TokenType::OrOr;
-                    tokens.push_back(std::move(token));
-                }
-                else if (value == "is")
-                {
-                    Token token;
-                    token.type = TokenType::EqualEqual;
-                    tokens.push_back(std::move(token));
-                }
-                else
-                {
-                    Token token;
-                    token.type = TokenType::Identifier;
-                    token.value = value;
-                    tokens.push_back(std::move(token));
-                }
             }
         }
-        else
+        else if (current == '|')
         {
             Token token;
-            // this is string mode
-            if (c == '"')
+            if (input[i + 1] == '|')
             {
-                stringMode = !stringMode;
-                token.type = TokenType::String;
-                token.value = std::move(buffer);
-                tokens.push_back(std::move(token));
-                buffer.clear();
+                ++i;
+                token.type = TokenType::AndAnd;
+                tokens.emplace_back(std::move(token));
+                continue;
+            }
+        }
+        else if (current == '!')
+        {
+            Token token;
+            if (input[i + 1] == '=')
+            {
+                ++i;
+                token.type = TokenType::NotEqual;
+                tokens.emplace_back(std::move(token));
+                continue;
+            }
+            token.type = TokenType::Not;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '<')
+        {
+            Token token;
+            if (input[i + 1] == '=')
+            {
+                ++i;
+                token.type = TokenType::SmallerEqual;
+                tokens.emplace_back(std::move(token));
+                continue;
+            }
+            token.type = TokenType::Smaller;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '>')
+        {
+            Token token;
+            if (input[i + 1] == '=')
+            {
+                ++i;
+                token.type = TokenType::BiggerEqual;
+                tokens.emplace_back(std::move(token));
+                continue;
+            }
+            token.type = TokenType::Bigger;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (isCharacter(current))
+        {
+            Token token;
+            std::string buffer;
+
+            size_t k = 0;
+            while (i + k < input.size() && (isCharacter(input[i + k]) || isdigit(input[i + k])))
+            {
+                buffer.push_back(input[i + k]);
+                ++k;
+            }
+            if (buffer == "and")
+            {
+                token.type = TokenType::AndAnd;
+            }
+            else if (buffer == "is")
+            {
+                token.type = TokenType::EqualEqual;
+            }
+            else if (buffer == "or")
+            {
+                token.type = TokenType::OrOr;
             }
             else
             {
-                buffer += c;
+                token.type = TokenType::Identifier;
+                token.value = buffer;
             }
+            tokens.emplace_back(std::move(token));
+            i += k - 1;
         }
-    }
-    if (stringMode)
-    {
-        Token token;
-        token.type = TokenType::Error;
-        token.line = line;
-        token.column = column;
-        token.errorMessage = "String not closed!";
-        tokens.push_back(std::move(token));
+        else if (current == '"')
+        {
+            Token token;
+            std::string buffer;
+
+            size_t k = 1;
+
+            while (i + k < input.size() && input[i + k] != '"')
+            {
+                buffer.push_back(input[i + k]);
+                ++k;
+            }
+
+            if (i + k >= input.size())
+            {
+                throw std::runtime_error("Error: String never finished.");
+            }
+
+            token.type = TokenType::String;
+            token.value = buffer;
+            tokens.emplace_back(std::move(token));
+
+            i += k;
+        }
+        else if (current == '\n')
+        {
+            Token token;
+            token.type = TokenType::NewLine;
+            line++;
+            column = 0;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == ';')
+        {
+            Token token;
+            token.type = TokenType::Semicolon;
+            tokens.emplace_back(std::move(token));
+        }
+        else if (current == '\'')
+        {
+            Token token;
+            std::string buffer;
+
+            size_t k = 1;
+
+            while (i + k < input.size() && input[i + k] != '\'')
+            {
+                buffer.push_back(input[i + k]);
+                ++k;
+            }
+
+            if (i + k >= input.size())
+            {
+                throw std::runtime_error("Error: Char never finished.");
+            }
+
+            token.type = TokenType::String;
+            token.value = buffer;
+            tokens.emplace_back(std::move(token));
+
+            i += k;
+        }
+
+        else if (isdigit(current))
+        {
+            Token token;
+            token.type = TokenType::Number;
+
+            double value = 0;
+
+            size_t k = 0;
+
+            while (i + k < input.size() && isdigit(input[i + k]))
+            {
+                value = value * 10 + (input[i + k] - '0');
+                ++k;
+            }
+
+            if (i + k < input.size() && input[i + k] == '.')
+            {
+                k++;
+
+                double place = 0.1;
+
+                while (i + k < input.size() && isdigit(input[i + k]))
+                {
+                    value += (input[i + k] - '0') * place;
+                    place *= 0.1;
+                    ++k;
+                }
+            }
+
+            token.value = value;
+            tokens.emplace_back(std::move(token));
+
+            i += k - 1;
+        }
+
+        column++;
     }
     Token token;
     token.type = TokenType::EndOfFile;
-    tokens.push_back(token);
+    tokens.emplace_back(std::move(token));
     return tokens;
 }

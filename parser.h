@@ -35,6 +35,7 @@ enum class VariableTypes{
 };
 
 
+
 struct VariableData {
     std::string name;
     Value value;
@@ -42,6 +43,23 @@ struct VariableData {
     bool isStrict;
     bool isGlobal;
     VariableTypes vartype;
+};
+
+struct TokenRange
+{
+    const std::vector<Token>* tokens;
+    size_t start;
+    size_t end;
+
+    const Token& operator[](size_t index) const
+    {
+        return (*tokens)[start + index];
+    }
+
+    size_t size() const
+    {
+        return end - start + 1;
+    }
 };
 using VariableTable = std::unordered_map<std::string, VariableData>;
 using ScopeStack = std::vector<VariableTable>;
@@ -58,10 +76,12 @@ struct Instruction
         Command,
         Return,
         Space,
-        Import
+        Use
     };
     Types type;
     std::vector<std::string> path;
+
+    std::vector<std::string> importPath;
 
     VariableData vardata;
 

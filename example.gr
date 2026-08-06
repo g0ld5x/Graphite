@@ -1,6 +1,9 @@
-fn test(n)
+use
 {
-    return 1
+  "stdlib/stdio.gr"
+  "stdlib/math.gr"
 }
 
-test(1000000)
+
+
+std.print(std.radianToDegree(30))

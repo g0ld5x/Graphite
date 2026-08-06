@@ -9,4 +9,4 @@ fn fib(int n)
 }
 
 
-fib(25);
+ Terminal.IO.println( fib(25) );

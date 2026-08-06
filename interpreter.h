@@ -16,5 +16,5 @@
 
 void initInterpreter(ScopeStack & scope); //used to run things once without recursion to init the interpreter.
 
-ExecutionResult interpret(const std::vector<Instruction>& input,ScopeStack & scopeStack);
+ExecutionResult interpret(const std::vector<Instruction>& input,ScopeStack & scopeStack, FunctionTable & FTable);
 #endif

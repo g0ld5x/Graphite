@@ -12,6 +12,7 @@ int main(int argc, char* argv[])
 {
     std::vector<std::string> path;
     ScopeStack scope;
+    FunctionTable ftable;
     initInterpreter(scope);
     if(argc == 1){ //repl mode
     std::cout << "Graphite version-0.1 \n";
@@ -39,7 +40,7 @@ int main(int argc, char* argv[])
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        interpret(parse(lex(input),path),scope);
+        interpret(parse(lex(input),path),scope,ftable);
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "\n";
         if(debugMode)
@@ -71,7 +72,7 @@ int main(int argc, char* argv[])
 
             std::string source = buffer.str();
             auto start = std::chrono::high_resolution_clock::now();
-            interpret(parse(lex(source),path),scope);
+            interpret(parse(lex(source),path),scope,ftable);
             auto end = std::chrono::high_resolution_clock::now();
 
                             std::cout << "\n Execution Time: "

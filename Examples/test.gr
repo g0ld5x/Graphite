@@ -1,0 +1,6 @@
+use {
+    "../stdlib/math.gr"
+}
+
+Terminal.IO.println(std.ln(19));
+

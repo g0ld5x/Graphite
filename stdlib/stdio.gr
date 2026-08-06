@@ -1,0 +1,17 @@
+space std{
+    fn print(string inp){
+        Terminal.IO.print(inp)
+    }
+    fn println(string inp){
+        Terminal.IO.println(inp)
+    }
+    fn input(string inp){
+        std.print(inp)
+        var val = ""
+        Terminal.IO.input(val)
+        return val
+    }
+    fn clear(){
+        Terminal.IO.clear()
+    }
+}

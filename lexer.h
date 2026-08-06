@@ -42,7 +42,7 @@ enum class TokenType
     NewLine = '|',
     Error = '!',
     True,
-    False       // if an error happens
+    False
 };
 
 struct Token
@@ -53,6 +53,6 @@ struct Token
     int column;
     std::string errorMessage;
 };
-std::vector<Token> lex(const std::string &input);
+std::vector<Token> lex(std::string_view input);
 
 #endif

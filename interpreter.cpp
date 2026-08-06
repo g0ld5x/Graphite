@@ -8,8 +8,24 @@
 #include <iostream>
 #include <math.h>
 #include <sstream>
+#include <fstream>
 
 
+std::vector<Token> resolveFile(const std::string & input){
+    std::ifstream inputFile(input);
+
+    if (!inputFile.is_open()) {
+        std::cerr << "Error: Could not open the file!" << std::endl;
+        return {};
+    }
+    std::string source;
+    std::string line;
+    while (std::getline(inputFile, line)) {
+        source += line + "\n";
+    }
+
+    return lex(source);
+}
 
 bool variantToBool2(const Value &value)
 {
@@ -71,7 +87,6 @@ std::string join(const std::vector<std::string> &elements, const std::string &de
     return result;
 }
 
-FunctionTable GlobalFunctionTable;
 
 bool variableExists(std::string name, ScopeStack &scope)
 {
@@ -104,21 +119,6 @@ VariableData &getVariable2(std::string name, ScopeStack &scope)
 void initInterpreter(ScopeStack &scope)
 {
     scope.push_back(VariableTable{}); // global scope
-    scope[0]["pi"] = {
-        "pi",
-        M_PI,
-        true, // isConst
-        true, // isStrict
-        true,
-        VariableTypes::Double};
-
-    scope[0]["e"] = {
-        "e",
-        M_E,
-        true, // isConst
-        true, // isStrict
-        true,
-        VariableTypes::Double};
 
     scope[0]["true"] = {
         "true",
@@ -136,8 +136,9 @@ void initInterpreter(ScopeStack &scope)
         true,
         VariableTypes::Bool};
 }
-ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &scope)
+ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &scope,FunctionTable & GlobalFunctionTable)
 {
+    bool dependenciesEncountered = false;
     bool returned = false;
     for (size_t i = 0; i < input.size(); i++)
     {
@@ -152,9 +153,32 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             func.locals = instr.locals;
             func.isVoid = true;
         }
+        else if (instr.type == Instruction::Types::Use)
+        {
+            
+            
+            if(dependenciesEncountered){
+                std::cerr << "Error: keyword use can only be used once per file.";
+            }
+            if(i != 0){
+                std::cerr << "Error: Dependencies must be listed at the top of the code!";
+            }
+            
+            else{
+                //normal route
+                for (size_t i = 0; i < instr.importPath.size(); i++)
+                {
+                    std::vector<std::string> a;
+                    ScopeStack importScope;
+                    interpret(parse(resolveFile(instr.importPath[i]), a),importScope,GlobalFunctionTable);
+                }
+                
+            }
+            dependenciesEncountered = true;
+        }
         else if (instr.type == Instruction::Types::Space)
         {
-            interpret(instr.body, scope);
+            interpret(instr.body, scope,GlobalFunctionTable);
         }
         else if (instr.type == Instruction::Types::Return)
         {
@@ -257,7 +281,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
             if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scope, GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope);
+                ExecutionResult result = interpret(instr.body, scope,GlobalFunctionTable);
 
                 if (result.didReturn == true)
                 {
@@ -267,7 +291,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (!instr.elseBody.empty())
             {
-                ExecutionResult result = interpret(instr.elseBody, scope);
+                ExecutionResult result = interpret(instr.elseBody, scope,GlobalFunctionTable);
 
                 if (result.didReturn)
                 {
@@ -287,7 +311,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 scope,
                 GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope);
+                ExecutionResult result = interpret(instr.body, scope,GlobalFunctionTable);
 
                 if (result.didReturn)
                     return result;
@@ -449,7 +473,7 @@ else if (auto funcIt = GlobalFunctionTable.find(path);
         bufferTable.emplace(var.name, var);
     }
 
-    ExecutionResult Return = interpret(targetFunc.body, scope);
+    ExecutionResult Return = interpret(targetFunc.body, scope,GlobalFunctionTable);
 
     scope.pop_back();
 

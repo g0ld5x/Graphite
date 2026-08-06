@@ -1,0 +1,245 @@
+space std {
+    fn pi(){
+        return 3.141592653589793;
+    }
+    fn e(){
+        return 2.718281828459045;
+    }
+    fn min(a, b) {
+        if (a < b) {
+            return a;
+        }
+
+        return b;
+    }
+
+
+    fn max(a, b) {
+        if (a > b) {
+            return a;
+        }
+
+        return b;
+    }
+
+
+    fn abs(x) {
+        if (x < 0) {
+            return -x;
+        }
+
+        return x;
+    }
+
+
+    fn pow(base, exponent) {
+        var result = 1;
+
+        while (exponent > 0) {
+            result = result * base;
+            exponent = exponent - 1;
+        }
+
+        return result;
+    }
+
+
+    fn sqrt(x) {
+        var guess = x / 2;
+        if(x==0){
+            return 0;
+        }
+        var i = 0;
+
+        while (i < 20) {
+            guess = (guess + x / guess) / 2;
+            i = i + 1;
+        }
+
+        return guess;
+    }
+    fn cbrt(x) {
+
+        if (x == 0) {
+            return 0;
+        }
+
+        var sign = 1;
+
+        if (x < 0) {
+            sign = -1;
+            x = -x;
+        }
+
+        var guess = x / 3;
+
+        var i = 0;
+
+        while (i < 20) {
+            guess = (2 * guess + x / (guess * guess)) / 3;
+            i = i + 1;
+        }
+
+        return guess * sign;
+    }
+
+fn root(x, n) {
+
+    var guess = x / 2;
+
+    var i = 0;
+
+    while (i < 30) {
+        guess = ((n - 1) * guess + x / Math.pow(guess, n - 1)) / n;
+        i = i + 1;
+    }
+
+    return guess;
+}
+fn round(x) {
+
+    var truncated = x; Int(truncated);
+    var difference = x - truncated;
+
+    if (difference >= 0.5) {
+        return truncated + 1;
+    }
+
+    if (difference <= -0.5) {
+        return truncated - 1;
+    }
+
+    return truncated;
+}
+fn floor(x) {
+
+    var truncated = x;Int(truncated);
+    var difference = x - truncated;
+
+    if (difference < 0) {
+        return truncated - 1;
+    }
+
+    return truncated;
+}
+
+fn ceil(x) {
+
+    var truncated = x;Int(truncated);
+    var difference = x - truncated;
+
+    if (difference > 0) {
+        return truncated + 1;
+    }
+
+    return truncated;
+}
+    fn ln(x) {
+
+        var y = (x - 1) / (x + 1);
+
+        var y2 = y * y;
+
+        var term = y;
+        var result = 0;
+
+        var n = 1;
+        var i = 0;
+
+        while (i < 20) {
+            result = result + term / n;
+
+            term = term * y2;
+            n = n + 2;
+
+            i = i + 1;
+        }
+
+        return result * 2;
+    }
+        fn radToDeg(radian) {
+        return radian * 180 / std.pi();
+    }
+
+
+    fn degToRad(degree) {
+        return degree * std.pi() / 180;
+    }
+    fn clamp(x, minValue, maxValue) {
+
+        if (x < minValue) {
+            return minValue;
+        }
+
+        if (x > maxValue) {
+            return maxValue;
+        }
+
+        return x;
+    }
+
+        fn sin(x) {
+
+        var twoPi = std.pi() * 2;
+
+        while (x > std.pi()) {
+            x = x - twoPi;
+        }
+
+        while (x < -std.pi()) {
+            x = x + twoPi;
+        }
+
+        var result = 0;
+        var term = x;
+
+        var i = 1;
+
+        while (i < 15) {
+
+            result = result + term;
+
+            term = -term * x * x / ((i + 1) * (i + 2));
+
+            i = i + 2;
+        }
+
+        return result;
+    }
+
+
+    fn cos(x) {
+
+        var twoPi = std.pi() * 2;
+
+        while (x > std.pi()) {
+            x = x - twoPi;
+        }
+
+        while (x < -std.pi()) {
+            x = x + twoPi;
+        }
+
+        var result = 0;
+        var term = 1;
+
+        var i = 0;
+
+        while (i < 15) {
+
+            result = result + term;
+
+            term = -term * x * x / ((i + 1) * (i + 2));
+
+            i = i + 2;
+        }
+
+        return result;
+    }
+
+
+    fn tan(x) {
+        return Math.sin(x) / Math.cos(x);
+    }
+
+}
