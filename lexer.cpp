@@ -108,6 +108,13 @@ std::vector<Token> lex(std::string_view input)
             Token token;
             if (input[i + 1] == '=')
             {
+                if(input[i+2] == '='){
+                    ++i;
+                    ++i;
+                    token.type = TokenType::TypeEquality;
+                    tokens.emplace_back(std::move(token));
+                    continue;
+                }
                 ++i;
                 token.type = TokenType::EqualEqual;
                 tokens.emplace_back(std::move(token));
@@ -195,6 +202,9 @@ std::vector<Token> lex(std::string_view input)
             else if (buffer == "is")
             {
                 token.type = TokenType::EqualEqual;
+            }
+            else if(buffer == "isType"){
+                token.type = TokenType::TypeEquality;
             }
             else if (buffer == "or")
             {

@@ -1,0 +1,37 @@
+space std{
+    fn int(val){
+        var a = val;
+        Int(a);
+        return a;  
+    }
+    fn double(val){
+        var a = val;
+        Double(a);
+        return a;  
+    }
+    fn string(val){
+        return val + "";
+    }
+    fn bool(val){
+        if(val is "true"){
+            return true;
+        }
+        if(val is "false"){
+            return false;
+        }
+        if(val is 0){
+            return false;
+        }
+        if(val is 1){
+            return true
+        }
+        if(val is 0.0){
+            return false;
+        }
+        if(val is 1.0){
+            return true
+        }
+
+        return 0;
+    }
+}

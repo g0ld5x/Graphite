@@ -23,9 +23,9 @@
     <h2>4. If Else</h2>
     <p>To create a if statement, use the if keyword followed by the condition inside parantheses. Ex: if(x==y){std.print("x is equal to y.")}  The else keyword can only be used after a if statement. The statements inside else only happen if the condition of the if statement is false. Ex: if(2==1){std.print("Correct")}else{std.print("False")}</p>
     <h2>5. Operators</h2>
-    <p>Comparison operators: is,==,<,>,<=,>=,!= (is and == have the same meaning). Logical operators: ||,&&,and,or (||=or,&&=and). Unary operators: !,-,+ (in some conditions the - and + are unary). Binary Operators: +,-,*,/,^ .</p>
+    <p>Comparison operators: is,==,<,>,<=,>=,!=,=== (=== and isType have the same meaning. Note that isType operator is extremely strict. Most math functions return a double so use the stdcast library to cast them to a preferred type) (is and == have the same meaning). Logical operators: ||,&&,and,or (||=or,&&=and). Unary operators: !,-,+ (in some conditions the - and + are unary). Binary Operators: +,-,*,/,^ .</p>
     <h2>6. Casting</h2>
-    <p>You can cast to int using Int(varname). You can cast to a double value using Double(varname). If you want to cast to a string, just do this. var x = 3; x = ""+3;</p>
+    <p>You can cast to a type using the stdcast library. After importing you can do int(expression),bool(expression),string(expression),double(expression). Note that Int() and Double() are deprecated. They only support casting a variable, not an expression.</p>
     <h2>7. Syntax</h2>
     <p>You can either use semicolons or to seperate commands or you can just write it in the next line. Every block of code generates a new scope, but just curly parantheses {} wont generate a new scope. </p>
     <h2>8. Comments</h2>
@@ -37,13 +37,15 @@
     <h2>11. Spaces</h2>
     <p>Spaces are used to organize values together. ex: space Math{ fn add(double a,double b){return a+b} }   Math.add(2,3);</p>
     <h2>12. Imports</h2>
-    <p>You can import files from another folders relative to the current path using use. Ex:   use { "stdlib/math.gh" "stdlib/stdio.gh" "custom.gh"}. You can only write use once per file and you must write it at the top.</p>
+    <p>You can import files from another folders relative to the current path using use. Ex:   use { "stdlib/math.gh" "stdlib/stdio.gh" "custom.gh"}. You can only write use once per file and you must write it at the top. Alternatively you can use the shorthand version to import only one path. Ex: use "stdlib"</p>
     <h2>13. The standard library</h2>
     <p>You can use the stdlib/math.gh for functions related to math. You can use the stdlib/stdio.gr for basic IO</p>
     <h3>stdmath.gr</h3>
     <p>Functions: max(x,y) , min(x,y) ln(x) for natural log, sin(x),cos(x),tan(x),radToDeg(x),degToRad(y),pi() to get pi,e() to get eulers number. floor(x),  ceil(x), round (x), sqrt(x), cbrt(x),root(x,n), pow(x,y) (you can also use the ^ operator. Ex: 3^2) ,  abs(x)</p>
     <h3>stdio.gr</h3>
-    <p>Functions: print(val), println(val), input() , clear()</p>
+    <p>Functions: print(val), println(val), input() , clear(),prompt(text) prompt is used to have a python style input with text printing.</p>
+    <h3>stdcast.gr</h3>
+    <p>Functions: string(val),int(val),double(val),bool(value)</p>
     <center><h1>|Example Programs|</h1></center>
     <h2>Hello World:</h2>
     <h3>HelloWorld.gh</h3>

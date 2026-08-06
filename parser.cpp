@@ -101,6 +101,22 @@ int variantToInt(const Value &value)
 
     return 0;
 }
+VariableTypes getType(const Value& value)
+{
+    return std::visit([](auto&& arg) -> VariableTypes {
+        using T = std::decay_t<decltype(arg)>;
+
+        if constexpr (std::is_same_v<T, int>)
+            return VariableTypes::Int;
+        else if constexpr (std::is_same_v<T, double>)
+            return VariableTypes::Double;
+        else if constexpr (std::is_same_v<T, bool>)
+            return VariableTypes::Bool;
+        else if constexpr (std::is_same_v<T, std::string>)
+            return VariableTypes::String;
+
+    }, value);
+}
 
 int precedence(TokenType type)
 {
@@ -120,6 +136,7 @@ int precedence(TokenType type)
 
     case TokenType::EqualEqual:
     case TokenType::NotEqual:
+    case TokenType::TypeEquality:
         return 3;
 
 
@@ -616,6 +633,16 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
 
         return lhs == rhs;
     }
+
+    case TokenType::TypeEquality:
+    {
+        if (getType(rhs) == getType(lhs)){
+            return true;
+        }else{
+            return false;
+        }
+
+    }
     case TokenType::NotEqual:
     {
         bool lhsNumeric =
@@ -722,14 +749,18 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
         { // could be a function,if,for,while,fn,var,const,strict or a function call like Terminal.IO.print("hello world!");
             if(value == "use"){
             instr.type = Instruction::Types::Use;
-            i++; // skip use
+            i++; 
             while(input[i].type == TokenType::NewLine){
                 i++;
             }
-            if (input[i].type != TokenType::LCurl)
+            if (input[i].type != TokenType::LCurl && input[i].type != TokenType::String)
             {
-                std::cerr <<"expected { after use";
+                std::cerr <<"expected { or a string after use";
             }
+
+            if(input[i].type == TokenType::String){
+                instr.importPath.push_back (variantToString(input[i].value));
+            }else{
 
             i++; // skip {
 
@@ -744,6 +775,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 i++;
             }
+        }
             instructions.push_back(std::move(instr));
             }
 

@@ -1,0 +1,18 @@
+space std{
+    space type{
+        fn string(){
+            return "";
+        }
+        fn int(){
+            var val = 0;
+            Int(val)
+            return val;
+        }
+        fn bool(){
+            return false;
+        }
+        fn double(){
+            return 0.000;
+        }
+    }
+}

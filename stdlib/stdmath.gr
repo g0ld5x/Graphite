@@ -90,7 +90,7 @@ fn root(x, n) {
     var i = 0;
 
     while (i < 30) {
-        guess = ((n - 1) * guess + x / Math.pow(guess, n - 1)) / n;
+        guess = ((n - 1) * guess + x / std.pow(guess, n - 1)) / n;
         i = i + 1;
     }
 
@@ -111,6 +111,7 @@ fn round(x) {
 
     return truncated;
 }
+
 fn floor(x) {
 
     var truncated = x;Int(truncated);

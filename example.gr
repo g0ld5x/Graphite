@@ -1,9 +1,2 @@
-use
-{
-  "stdlib/stdio.gr"
-  "stdlib/math.gr"
-}
-
-
-
-var a = std.input();
+use "stdlib"
+std.print(std.int(std.pow(2,3)) isType  std.type.int() )

@@ -9,22 +9,65 @@
 #include <math.h>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+std::vector<Token> resolveFile(const std::string& input)
+{
+    std::vector<Token> tokens;
+
+    auto processFile = [&](const fs::path& path)
+    {
+        std::ifstream inputFile(path);
+
+        if (!inputFile.is_open())
+        {
+            std::cerr << "Error: Could not open the file: " 
+                      << path << std::endl;
+            return;
+        }
+
+        std::string source;
+        std::string line;
+
+        while (std::getline(inputFile, line))
+        {
+            source += line + "\n";
+        }
+
+        auto fileTokens = lex(source);
+
+        tokens.insert(
+            tokens.end(),
+            fileTokens.begin(),
+            fileTokens.end()
+        );
+    };
 
 
-std::vector<Token> resolveFile(const std::string & input){
-    std::ifstream inputFile(input);
-
-    if (!inputFile.is_open()) {
-        std::cerr << "Error: Could not open the file!" << std::endl;
-        return {};
+    if (fs::is_regular_file(input))
+    {
+        processFile(input);
     }
-    std::string source;
-    std::string line;
-    while (std::getline(inputFile, line)) {
-        source += line + "\n";
+    else if (fs::is_directory(input))
+    {
+        for (const auto& entry : fs::directory_iterator(input))
+        {
+            if (entry.is_regular_file() &&
+                entry.path().extension() == ".gr")
+            {
+                processFile(entry.path());
+            }
+        }
+    }
+    else
+    {
+        std::cerr << "Error: Invalid import path: " 
+                  << input << std::endl;
     }
 
-    return lex(source);
+    return tokens;
 }
 
 bool variantToBool2(const Value &value)

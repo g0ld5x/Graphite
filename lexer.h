@@ -41,6 +41,7 @@ enum class TokenType
     EndOfFile = 'E',  // self-explanatory
     NewLine = '|',
     Error = '!',
+    TypeEquality,
     True,
     False
 };
