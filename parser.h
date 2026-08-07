@@ -31,7 +31,9 @@ enum class VariableTypes{
     Int,
     Double,
     String,
-    Bool
+    Bool,
+    Array,
+    Null
 };
 
 

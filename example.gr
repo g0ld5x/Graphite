@@ -1,2 +1,3 @@
 use "stdlib"
-std.print(std.int(std.pow(2,3)) isType  std.type.int() )
+
+var x = [1,2,3,4,5]

@@ -3,9 +3,23 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <memory>
+struct ArrayValue;
 
+using ArrayPtr = std::shared_ptr<ArrayValue>;
 
-using Value = std::variant<int, double, std::string,bool>;
+using Value = std::variant<
+    std::monostate,
+    int,
+    double,
+    std::string,
+    bool,
+    ArrayPtr
+>;
+
+struct ArrayValue {
+    std::vector<Value> values;
+};
 enum class TokenType
 {
     Identifier = 'I', // writeln,write,for,while,
@@ -13,7 +27,7 @@ enum class TokenType
     LCurl = '{',
     //implement theese
     OrOr, // || DONE
-    AndAnd,// && DONE
+    AndAnd = 127,// && DONE
     EqualEqual, // == DONE
     NotEqual, // != DONE
     Bigger, // > DONE
@@ -40,7 +54,6 @@ enum class TokenType
     Equals = '=',     //=
     EndOfFile = 'E',  // self-explanatory
     NewLine = '|',
-    Error = '!',
     TypeEquality,
     True,
     False

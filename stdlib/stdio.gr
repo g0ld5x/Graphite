@@ -1,3 +1,4 @@
+
 space std{
     fn print(string inp){
         Terminal.IO.print(inp)

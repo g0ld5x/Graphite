@@ -114,6 +114,11 @@ VariableTypes getType(const Value& value)
             return VariableTypes::Bool;
         else if constexpr (std::is_same_v<T, std::string>)
             return VariableTypes::String;
+        else if constexpr(std::is_same_v<T,std::monostate>)
+            return VariableTypes::Null;
+
+        else if constexpr(std::is_same_v<T,ArrayPtr>)
+            return VariableTypes::Array;
 
     }, value);
 }
@@ -173,10 +178,25 @@ int precedence(TokenType type)
 std::string variantToString(const Value &a)
 {
     return std::visit([](const auto &arg) -> std::string
-                      {
-                        std::ostringstream oss;
-                        oss << arg;
-                        return oss.str(); }, a);
+    {
+        using T = std::decay_t<decltype(arg)>;
+
+        if constexpr (std::is_same_v<T, std::monostate>)
+        {
+            return "null";
+        }
+        else if constexpr (std::is_same_v<T, std::shared_ptr<ArrayValue>>)
+        {
+            return arrayToString(arg);
+        }
+        else
+        {
+            std::ostringstream oss;
+            oss << arg;
+            return oss.str();
+        }
+
+    }, a);
 }
 
 bool isUnary(const std::vector<Token> &tokens, int index)
@@ -319,6 +339,23 @@ Value ExecuteFunction(
     }
 
     return Value{};
+}
+
+std::string arrayToString(const std::shared_ptr<ArrayValue>& array)
+{
+    std::string result = "[";
+
+    for(size_t i = 0; i < array->values.size(); i++)
+    {
+        result += variantToString(array->values[i]);
+
+        if(i != array->values.size() - 1)
+            result += ",";
+    }
+
+    result += "]";
+
+    return result;
 }
 
 Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack &scope, FunctionTable &functionTable)
@@ -487,7 +524,63 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         left++;
         right--;
     }
+    if (tokens[left].type == TokenType::LBrac)
+{
+    int depth = 1;
+    int closing = left;
 
+    while (++closing <= right)
+    {
+        if(tokens[closing].type == TokenType::LBrac)
+            depth++;
+
+        else if(tokens[closing].type == TokenType::RBrac)
+        {
+            depth--;
+
+            if(depth == 0)
+                break;
+        }
+    }
+
+    if(closing == right)
+    {
+        auto array = std::make_shared<ArrayValue>();
+
+        int start = left + 1;
+        int depth = 0;
+
+        for(int i = start; i < right; i++)
+        {
+            if(tokens[i].type == TokenType::LParen ||
+               tokens[i].type == TokenType::LBrac)
+                depth++;
+
+            else if(tokens[i].type == TokenType::RParen ||
+                    tokens[i].type == TokenType::RBrac)
+                depth--;
+
+            if(tokens[i].type == TokenType::Comma && depth == 0)
+            {
+                array->values.push_back(
+                    Evaluate(tokens,start,i-1,scope,functionTable)
+                );
+
+                start = i + 1;
+            }
+        }
+
+        // last element
+        if(start < right)
+        {
+            array->values.push_back(
+                Evaluate(tokens,start,right-1,scope,functionTable)
+            );
+        }
+        std::cout << arrayToString(array);
+        return array;
+    }
+}
     // Prefix unary operators
     if (isUnary(tokens, left))
     {
@@ -551,7 +644,51 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             split = i;
         }
     }
+    if (tokens[right].type == TokenType::RBrac)
+{
+    int depth = 0;
+    int open = -1;
 
+    for (int i = right; i >= left; i--)
+    {
+        if(tokens[i].type == TokenType::RBrac)
+            depth++;
+
+        else if(tokens[i].type == TokenType::LBrac)
+        {
+            depth--;
+
+            if(depth == 0)
+            {
+                open = i;
+                break;
+            }
+        }
+    }
+
+    if(open != -1)
+    {
+        Value arrayValue = Evaluate(tokens, left, open - 1, scope, functionTable);
+
+        Value indexValue = Evaluate(tokens,
+                                    open + 1,
+                                    right - 1,
+                                    scope,
+                                    functionTable);
+
+        if(!std::holds_alternative<std::shared_ptr<ArrayValue>>(arrayValue))
+            throw std::runtime_error("Cannot index non-array");
+
+        auto array = std::get<std::shared_ptr<ArrayValue>>(arrayValue);
+
+        int index = variantToInt(indexValue);
+
+        if(index < 0 || index >= array->values.size())
+            throw std::runtime_error("Array index out of bounds");
+
+        return array->values[index];
+    }
+}
     if (split == -1)
         throw std::runtime_error("No operator found.");
 

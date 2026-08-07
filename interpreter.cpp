@@ -10,7 +10,23 @@
 #include <sstream>
 #include <fstream>
 #include <filesystem>
+#include <algorithm>
+#include "Header_LPI/parseHeader.h"
+#include <cstdlib>
+#include <string>
 
+void runCommand(const std::string& command)
+{
+    std::system(command.c_str());
+}
+std::string getFileName(const std::string& path) {
+    size_t lastSlash = path.find_last_of("/\\");
+    
+    if (lastSlash == std::string::npos) {
+        return path;
+    }
+    return path.substr(lastSlash + 1);
+}
 namespace fs = std::filesystem;
 
 std::vector<Token> resolveFile(const std::string& input)
@@ -52,15 +68,44 @@ std::vector<Token> resolveFile(const std::string& input)
     }
     else if (fs::is_directory(input))
     {
+        std::vector<std::string> includedInExport;
         for (const auto& entry : fs::directory_iterator(input))
         {
-            if (entry.is_regular_file() &&
-                entry.path().extension() == ".gr")
-            {
-                processFile(entry.path());
+            if(getFileName(entry.path()).ends_with(".grh")){
+                //.grh is the extension for header files btw.
+                std::ifstream inputFile(entry.path());
+                std::string source;
+                std::string line;
+                while(std::getline(inputFile,line)){
+                    source += line;
+                }
+
+                ExportList parsed = parseHeader(lex(source));
+                fs::path filePath = getFileName(entry.path()); 
+    
+                fs::path fullPath = fs::absolute(filePath);
+                
+                fs::path HeaderfolderName = fullPath.parent_path().filename();
+                for (size_t i = 0; i < parsed.paths.size(); i++)
+                { 
+                    //since headers must be at the same path as the .gh files this should work.
+                    //the users will write only the relative file name, so i have to somehow get their paths relative to the file that is being ran.
+                    if(parsed.paths[i] != ""){
+                        includedInExport.push_back(parsed.paths[i]);
+                    }
+                }
+                
+                
+                
             }
         }
+
+        for(const auto & entry : fs::directory_iterator(input)){
+            if (std::find(includedInExport.begin(), includedInExport.end(), getFileName(entry.path())) != includedInExport.end()) {
+                processFile(entry);
+        }
     }
+}
     else
     {
         std::cerr << "Error: Invalid import path: " 
@@ -87,10 +132,21 @@ bool variantToBool2(const Value &value)
 std::string variantToString2(const Value &a)
 {
     return std::visit([](const auto &arg) -> std::string
-                      {
-                        std::ostringstream oss;
-                        oss << arg;
-                        return oss.str(); }, a);
+    {
+        using T = std::decay_t<decltype(arg)>;
+
+        if constexpr (std::is_same_v<T, std::monostate>)
+        {
+            return "null";
+        }
+        else
+        {
+            std::ostringstream oss;
+            oss << arg;
+            return oss.str();
+        }
+
+    }, a);
 }
 
 bool isInFunctions(std::string name, FunctionTable functions)
@@ -405,6 +461,9 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
                 }
             }
+            else if(path == "os"){
+                runCommand(variantToString2(Evaluate(instr.arguments[0], 0, instr.arguments[0].size() - 1, scope, GlobalFunctionTable)));
+            }
             else if (path == "Terminal.IO.println")
             {
                 for (size_t k = 0; k < instr.arguments.size(); k++)
@@ -488,7 +547,7 @@ else if (auto funcIt = GlobalFunctionTable.find(path);
 
         ExecutionResult result;
         result.didReturn = false;
-        result.returnValue = nullptr;
+        result.returnValue = std::monostate();
         return result;
     }
 
