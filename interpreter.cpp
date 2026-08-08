@@ -15,31 +15,193 @@
 #include <cstdlib>
 #include <string>
 
-void runCommand(const std::string& command)
+#include <string>
+#include <vector>
+#include <stdexcept>
+
+#ifdef _WIN32
+
+#include <windows.h>
+
+void runCommand(
+    const std::string &command,
+    const std::vector<std::string> &args)
 {
-    std::system(command.c_str());
+    std::string commandLine = "\"" + command + "\"";
+
+    for (const auto &arg : args)
+    {
+        commandLine += " \"";
+        commandLine += arg;
+        commandLine += "\"";
+    }
+
+    STARTUPINFOA startupInfo{};
+    PROCESS_INFORMATION processInfo{};
+
+    startupInfo.cb = sizeof(startupInfo);
+
+    if (!CreateProcessA(
+            nullptr,
+            commandLine.data(),
+            nullptr,
+            nullptr,
+            FALSE,
+            0,
+            nullptr,
+            nullptr,
+            &startupInfo,
+            &processInfo))
+    {
+        throw std::runtime_error("Failed to execute command");
+    }
+
+    WaitForSingleObject(processInfo.hProcess, INFINITE);
+
+    CloseHandle(processInfo.hProcess);
+    CloseHandle(processInfo.hThread);
 }
-std::string getFileName(const std::string& path) {
+
+#else // Linux, macOS, BSD, other POSIX systems
+
+#include <unistd.h>
+#include <sys/wait.h>
+
+TokenRange makeTokenRange(const std::vector<Token> &tokens)
+{
+    if (tokens.empty())
+        throw std::runtime_error("Cannot create TokenRange from empty token vector");
+
+    return TokenRange{
+        &tokens,
+        0,
+        tokens.size() - 1};
+}
+
+void runCommand(
+    const std::string &command,
+    const std::vector<std::string> &args)
+{
+    pid_t pid = fork();
+
+    if (pid < 0)
+        throw std::runtime_error("fork() failed");
+
+    if (pid == 0)
+    {
+        std::vector<char *> argv;
+
+        argv.push_back(const_cast<char *>(command.c_str()));
+
+        for (const auto &arg : args)
+        {
+            argv.push_back(const_cast<char *>(arg.c_str()));
+        }
+
+        argv.push_back(nullptr);
+
+        execvp(command.c_str(), argv.data());
+
+        // execvp only returns if it failed
+        _exit(127);
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+}
+
+#endif
+
+VariableTypes getVarType(const Value &value)
+{
+    switch (value.index())
+    {
+    case 0:
+        return VariableTypes::Null;
+    case 1:
+        return VariableTypes::Int;
+    case 2:
+        return VariableTypes::Double;
+    case 3:
+        return VariableTypes::String;
+    case 4:
+        return VariableTypes::Bool;
+    case 5:
+        return VariableTypes::Array;
+
+    default:
+        throw std::runtime_error("Unknown Value type");
+    }
+}
+
+std::string osType()
+{
+#ifdef _WIN32
+    return "windows";
+#elif defined(__APPLE__)
+    return "macos";
+#elif defined(__linux__)
+    return "linux";
+#elif defined(__FreeBSD__)
+    return "freebsd";
+#elif defined(__OpenBSD__)
+    return "openbsd";
+#elif defined(__NetBSD__)
+    return "netbsd";
+#else
+    return "unknown";
+#endif
+}
+
+int variantToInt2(const Value &value)
+{
+    if (const auto *p = std::get_if<int>(&value))
+        return *p;
+
+    if (const auto *p = std::get_if<double>(&value))
+        return static_cast<int>(*p);
+
+    if (const auto *p = std::get_if<bool>(&value))
+        return *p ? 1 : 0;
+
+    if (const auto *p = std::get_if<std::string>(&value))
+    {
+        try
+        {
+            return std::stoi(*p);
+        }
+        catch (...)
+        {
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
+std::string getFileName(const std::string &path)
+{
     size_t lastSlash = path.find_last_of("/\\");
-    
-    if (lastSlash == std::string::npos) {
+
+    if (lastSlash == std::string::npos)
+    {
         return path;
     }
     return path.substr(lastSlash + 1);
 }
 namespace fs = std::filesystem;
 
-std::vector<Token> resolveFile(const std::string& input)
+std::vector<Token> resolveFile(const std::string &input)
 {
     std::vector<Token> tokens;
 
-    auto processFile = [&](const fs::path& path)
+    auto processFile = [&](const fs::path &path)
     {
         std::ifstream inputFile(path);
 
         if (!inputFile.is_open())
         {
-            std::cerr << "Error: Could not open the file: " 
+            std::cerr << "Error: Could not open the file: "
                       << path << std::endl;
             return;
         }
@@ -57,10 +219,8 @@ std::vector<Token> resolveFile(const std::string& input)
         tokens.insert(
             tokens.end(),
             fileTokens.begin(),
-            fileTokens.end()
-        );
+            fileTokens.end());
     };
-
 
     if (fs::is_regular_file(input))
     {
@@ -69,46 +229,48 @@ std::vector<Token> resolveFile(const std::string& input)
     else if (fs::is_directory(input))
     {
         std::vector<std::string> includedInExport;
-        for (const auto& entry : fs::directory_iterator(input))
+        for (const auto &entry : fs::directory_iterator(input))
         {
-            if(getFileName(entry.path()).ends_with(".grh")){
+            if (getFileName(entry.path()).ends_with(".grh"))
+            {
                 //.grh is the extension for header files btw.
                 std::ifstream inputFile(entry.path());
                 std::string source;
                 std::string line;
-                while(std::getline(inputFile,line)){
+                while (std::getline(inputFile, line))
+                {
                     source += line;
                 }
 
                 ExportList parsed = parseHeader(lex(source));
-                fs::path filePath = getFileName(entry.path()); 
-    
+                fs::path filePath = getFileName(entry.path());
+
                 fs::path fullPath = fs::absolute(filePath);
-                
+
                 fs::path HeaderfolderName = fullPath.parent_path().filename();
                 for (size_t i = 0; i < parsed.paths.size(); i++)
-                { 
-                    //since headers must be at the same path as the .gh files this should work.
-                    //the users will write only the relative file name, so i have to somehow get their paths relative to the file that is being ran.
-                    if(parsed.paths[i] != ""){
+                {
+                    // since headers must be at the same path as the .gh files this should work.
+                    // the users will write only the relative file name, so i have to somehow get their paths relative to the file that is being ran.
+                    if (parsed.paths[i] != "")
+                    {
                         includedInExport.push_back(parsed.paths[i]);
                     }
                 }
-                
-                
-                
             }
         }
 
-        for(const auto & entry : fs::directory_iterator(input)){
-            if (std::find(includedInExport.begin(), includedInExport.end(), getFileName(entry.path())) != includedInExport.end()) {
+        for (const auto &entry : fs::directory_iterator(input))
+        {
+            if (std::find(includedInExport.begin(), includedInExport.end(), getFileName(entry.path())) != includedInExport.end())
+            {
                 processFile(entry);
+            }
         }
     }
-}
     else
     {
-        std::cerr << "Error: Invalid import path: " 
+        std::cerr << "Error: Invalid import path: "
                   << input << std::endl;
     }
 
@@ -132,21 +294,20 @@ bool variantToBool2(const Value &value)
 std::string variantToString2(const Value &a)
 {
     return std::visit([](const auto &arg) -> std::string
-    {
-        using T = std::decay_t<decltype(arg)>;
+                      {
+                          using T = std::decay_t<decltype(arg)>;
 
-        if constexpr (std::is_same_v<T, std::monostate>)
-        {
-            return "null";
-        }
-        else
-        {
-            std::ostringstream oss;
-            oss << arg;
-            return oss.str();
-        }
-
-    }, a);
+                          if constexpr (std::is_same_v<T, std::monostate>)
+                          {
+                              return "null";
+                          }
+                          else
+                          {
+                              std::ostringstream oss;
+                              oss << arg;
+                              return oss.str();
+                          } },
+                      a);
 }
 
 bool isInFunctions(std::string name, FunctionTable functions)
@@ -167,7 +328,6 @@ std::string join(const std::vector<std::string> &elements, const std::string &de
     if (elements.empty())
         return "";
 
-
     size_t total_length = 0;
     for (const auto &s : elements)
         total_length += s.length();
@@ -185,7 +345,6 @@ std::string join(const std::vector<std::string> &elements, const std::string &de
 
     return result;
 }
-
 
 bool variableExists(std::string name, ScopeStack &scope)
 {
@@ -235,7 +394,7 @@ void initInterpreter(ScopeStack &scope)
         true,
         VariableTypes::Bool};
 }
-ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &scope,FunctionTable & GlobalFunctionTable)
+ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &scope, FunctionTable &GlobalFunctionTable)
 {
     bool dependenciesEncountered = false;
     bool returned = false;
@@ -254,30 +413,30 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         }
         else if (instr.type == Instruction::Types::Use)
         {
-            
-            
-            if(dependenciesEncountered){
+            if (dependenciesEncountered)
+            {
                 std::cerr << "Error: keyword use can only be used once per file.";
             }
-            if(i != 0){
+            if (i != 0)
+            {
                 std::cerr << "Error: Dependencies must be listed at the top of the code!";
             }
-            
-            else{
-                //normal route
+
+            else
+            {
+                // normal route
                 for (size_t i = 0; i < instr.importPath.size(); i++)
                 {
                     std::vector<std::string> a;
                     ScopeStack importScope;
-                    interpret(parse(resolveFile(instr.importPath[i]), a),importScope,GlobalFunctionTable);
+                    interpret(parse(resolveFile(instr.importPath[i]), a), importScope, GlobalFunctionTable);
                 }
-                
             }
             dependenciesEncountered = true;
         }
         else if (instr.type == Instruction::Types::Space)
         {
-            interpret(instr.body, scope,GlobalFunctionTable);
+            interpret(instr.body, scope, GlobalFunctionTable);
         }
         else if (instr.type == Instruction::Types::Return)
         {
@@ -285,9 +444,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             ExecutionResult exec;
             exec.didReturn = true;
             exec.returnValue = Evaluate(
-                instr.expression,
-                0,
-                instr.expression.size() - 1,
+                makeTokenRange(instr.expression),
                 scope,
                 GlobalFunctionTable);
 
@@ -297,9 +454,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         {
 
             Value value = Evaluate(
-                instr.expression,
-                0,
-                instr.expression.size() - 1,
+                makeTokenRange(instr.expression),
                 scope,
                 GlobalFunctionTable);
 
@@ -343,33 +498,58 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else
             {
 
-                Value value = Evaluate(instr.expression, 0, instr.expression.size() - 1, scope, GlobalFunctionTable);
-                if (target.isStrict)
+                Value value = Evaluate(makeTokenRange(instr.expression), scope, GlobalFunctionTable);
+
+                if (!instr.indexExpression.empty())
                 {
-                    if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
+                    Value indexValue = Evaluate(makeTokenRange(instr.indexExpression), scope, GlobalFunctionTable);
+
+                    int index = variantToInt2(indexValue);
+
+                    if (std::holds_alternative<std::shared_ptr<ArrayValue>>(target.value))
                     {
-                        target.value = std::move(value);
+                        auto &array =
+                            std::get<std::shared_ptr<ArrayValue>>(target.value);
+
+                        array->values[index] = value;
                     }
-                    else if (std::holds_alternative<std::string>(value) && instr.vardata.vartype == VariableTypes::String)
+                    else if (std::holds_alternative<std::string>(target.value))
                     {
-                        target.value = std::move(value);
-                    }
-                    else if (std::holds_alternative<double>(value) && instr.vardata.vartype == VariableTypes::Double)
-                    {
-                        target.value = std::move(value);
-                    }
-                    else if (std::holds_alternative<bool>(value) && instr.vardata.vartype == VariableTypes::Bool)
-                    {
-                        target.value = std::move(value);
-                    }
-                    else
-                    {
-                        std::cerr << "Cannot change the type of a strict variable";
+                        auto &str = std::get<std::string>(target.value);
+                        auto &replacement = std::get<std::string>(value);
+
+                        str.replace(index, 1, replacement);
                     }
                 }
                 else
                 {
-                    getVariable2(instr.vardata.name, scope).value = value;
+                    if (target.isStrict)
+                    {
+                        if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
+                        {
+                            target.value = std::move(value);
+                        }
+                        else if (std::holds_alternative<std::string>(value) && instr.vardata.vartype == VariableTypes::String)
+                        {
+                            target.value = std::move(value);
+                        }
+                        else if (std::holds_alternative<double>(value) && instr.vardata.vartype == VariableTypes::Double)
+                        {
+                            target.value = std::move(value);
+                        }
+                        else if (std::holds_alternative<bool>(value) && instr.vardata.vartype == VariableTypes::Bool)
+                        {
+                            target.value = std::move(value);
+                        }
+                        else
+                        {
+                            std::cerr << "Cannot change the type of a strict variable";
+                        }
+                    }
+                    else
+                    {
+                        getVariable2(instr.vardata.name, scope).value = value;
+                    }
                 }
             }
             continue;
@@ -378,9 +558,9 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         {
             scope.push_back(VariableTable{});
 
-            if (variantToBool2(Evaluate(instr.condition, 0, instr.condition.size() - 1, scope, GlobalFunctionTable)))
+            if (variantToBool2(Evaluate(makeTokenRange(instr.condition), scope, GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope,GlobalFunctionTable);
+                ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
 
                 if (result.didReturn == true)
                 {
@@ -390,7 +570,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (!instr.elseBody.empty())
             {
-                ExecutionResult result = interpret(instr.elseBody, scope,GlobalFunctionTable);
+                ExecutionResult result = interpret(instr.elseBody, scope, GlobalFunctionTable);
 
                 if (result.didReturn)
                 {
@@ -404,13 +584,11 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         else if (instr.type == Instruction::Types::While)
         {
             while (variantToBool2(Evaluate(
-                instr.condition,
-                0,
-                instr.condition.size() - 1,
+                makeTokenRange(instr.condition),
                 scope,
                 GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope,GlobalFunctionTable);
+                ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
 
                 if (result.didReturn)
                     return result;
@@ -454,21 +632,80 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     target.vartype = VariableTypes::Double;
                 }
             }
+            else if (path == "__native.getOsType")
+            {
+                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                target.value = osType();
+            }
             else if (path == "Terminal.IO.print")
             {
                 for (size_t k = 0; k < instr.arguments.size(); k++)
                 {
-                    std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
+                    std::cout << variantToString2(Evaluate(makeTokenRange(instr.arguments[k]), scope, GlobalFunctionTable));
                 }
             }
-            else if(path == "os"){
-                runCommand(variantToString2(Evaluate(instr.arguments[0], 0, instr.arguments[0].size() - 1, scope, GlobalFunctionTable)));
+            else if (path == "os")
+            {
+                if (instr.arguments.empty())
+                    throw std::runtime_error("os requires at least one argument");
+
+                std::string command = variantToString2(
+                    Evaluate(
+                        makeTokenRange(instr.arguments[0]),
+                        scope,
+                        GlobalFunctionTable));
+
+                std::vector<std::string> args;
+
+                for (size_t i = 1; i < instr.arguments.size(); ++i)
+                {
+                    args.push_back(
+                        variantToString2(
+                            Evaluate(
+                                makeTokenRange(instr.arguments[i]),
+                                scope,
+                                GlobalFunctionTable)));
+                }
+
+                runCommand(command, args);
             }
+else if (path == "size")
+{
+    VariableData &source =
+        getVariable2(
+            variantToString2(instr.arguments[0][0].value),
+            scope
+        );
+
+    VariableData &target =
+        getVariable2(
+            variantToString2(instr.arguments[1][0].value),
+            scope
+        );
+
+    Value &value = source.value;
+
+    if (std::holds_alternative<std::shared_ptr<ArrayValue>>(value))
+    {
+        auto array =
+            std::get<std::shared_ptr<ArrayValue>>(value);
+
+        target.value =
+            static_cast<int>(array->values.size());
+    }
+    else if (std::holds_alternative<std::string>(value))
+    {
+        target.value =
+            static_cast<int>(
+                std::get<std::string>(value).size()
+            );
+    }
+}
             else if (path == "Terminal.IO.println")
             {
                 for (size_t k = 0; k < instr.arguments.size(); k++)
                 {
-                    std::cout << variantToString2(Evaluate(instr.arguments[k], 0, instr.arguments[k].size() - 1, scope, GlobalFunctionTable));
+                    std::cout << variantToString2(Evaluate(makeTokenRange(instr.arguments[k]), scope, GlobalFunctionTable));
                     std::cout << "\n";
                 }
             }
@@ -531,59 +768,56 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     }
                 }
             }
-else if (auto funcIt = GlobalFunctionTable.find(path);
-         funcIt != GlobalFunctionTable.end())
-{
-    GFunction& targetFunc = funcIt->second;
+            else if (auto funcIt = GlobalFunctionTable.find(path);
+                     funcIt != GlobalFunctionTable.end())
+            {
+                GFunction &targetFunc = funcIt->second;
 
-    if (instr.arguments.size() != targetFunc.locals.size())
-    {
-        std::cerr << "Error: function " << path
-                  << " expected "
-                  << targetFunc.locals.size()
-                  << " arguments but got "
-                  << instr.arguments.size()
-                  << "\n";
+                if (instr.arguments.size() != targetFunc.locals.size())
+                {
+                    std::cerr << "Error: function " << path
+                              << " expected "
+                              << targetFunc.locals.size()
+                              << " arguments but got "
+                              << instr.arguments.size()
+                              << "\n";
 
-        ExecutionResult result;
-        result.didReturn = false;
-        result.returnValue = std::monostate();
-        return result;
-    }
+                    ExecutionResult result;
+                    result.didReturn = false;
+                    result.returnValue = std::monostate();
+                    return result;
+                }
 
-    // Evaluate arguments
-    for (size_t k = 0; k < instr.arguments.size(); k++)
-    {
-        targetFunc.locals[k].value =
-            Evaluate(
-                instr.arguments[k],
-                0,
-                instr.arguments[k].size() - 1,
-                scope,
-                GlobalFunctionTable
-            );
-    }
+                // Evaluate arguments
+                for (size_t k = 0; k < instr.arguments.size(); k++)
+                {
+                    targetFunc.locals[k].value =
+                        Evaluate(
+                            makeTokenRange(instr.arguments[k]),
+                            scope,
+                            GlobalFunctionTable);
+                }
 
-    // Create new scope directly
-    scope.emplace_back();
-    VariableTable& bufferTable = scope.back();
+                // Create new scope directly
+                scope.emplace_back();
+                VariableTable &bufferTable = scope.back();
 
-    bufferTable.reserve(targetFunc.locals.size());
+                bufferTable.reserve(targetFunc.locals.size());
 
-    for (const auto& var : targetFunc.locals)
-    {
-        bufferTable.emplace(var.name, var);
-    }
+                for (const auto &var : targetFunc.locals)
+                {
+                    bufferTable.emplace(var.name, var);
+                }
 
-    ExecutionResult Return = interpret(targetFunc.body, scope,GlobalFunctionTable);
+                ExecutionResult Return = interpret(targetFunc.body, scope, GlobalFunctionTable);
 
-    scope.pop_back();
+                scope.pop_back();
 
-    if (Return.didReturn)
-    {
-        return Return;
-    }
-}
+                if (Return.didReturn)
+                {
+                    return Return;
+                }
+            }
             else
             {
                 std::cerr << "Unknown function '" << path << "' \n";

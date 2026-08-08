@@ -33,7 +33,8 @@ enum class VariableTypes{
     String,
     Bool,
     Array,
-    Null
+    Null,
+    AllAccept
 };
 
 
@@ -61,6 +62,15 @@ struct TokenRange
     size_t size() const
     {
         return end - start + 1;
+    }
+
+    TokenRange subrange(size_t newStart, size_t newEnd) const
+    {
+        return {
+            tokens,
+            start + newStart,
+            start + newEnd
+        };
     }
 };
 using VariableTable = std::unordered_map<std::string, VariableData>;
@@ -90,6 +100,7 @@ struct Instruction
     std::vector<Token> expression; //for vars before computing their values at runtime
     std::vector<std::vector<Token>> arguments;
 
+    std::vector<Token> indexExpression; // for this:   a[expression] = 3;
     std::vector<Token> condition;
 
     //for functions,if,else,while
@@ -126,5 +137,8 @@ std::vector<Instruction> parse(const std::vector<Token> & input,std::vector<std:
 Value ExecuteFunction(const std::string& name,
                    const std::vector<Value>& args);
 
-Value Evaluate(const std::vector<Token> &tokens,int left,int right,ScopeStack& scope, FunctionTable &functionTable);
+Value Evaluate(
+    const TokenRange& tokens,
+    ScopeStack& scope,
+    FunctionTable& functionTable);
 #endif

@@ -5,4 +5,5 @@ export
     "stdmath.gr"
     "stdtypes.gr"
     "stdcast.gr"
+    "stdarray.gr"
 }

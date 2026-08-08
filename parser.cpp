@@ -13,16 +13,17 @@
 #include <cmath>
 #include <sstream>
 #include <climits>
-//here we goo
+// here we goo
+
+
 
 std::string joinpath(
-    const std::vector<std::string>& elements,
-    const std::string& delimiter
-)
+    const std::vector<std::string> &elements,
+    const std::string &delimiter)
 {
     std::string result;
 
-    for (const auto& element : elements)
+    for (const auto &element : elements)
     {
         if (element.empty())
             continue;
@@ -101,26 +102,27 @@ int variantToInt(const Value &value)
 
     return 0;
 }
-VariableTypes getType(const Value& value)
+VariableTypes getType(const Value &value)
 {
-    return std::visit([](auto&& arg) -> VariableTypes {
-        using T = std::decay_t<decltype(arg)>;
+    return std::visit([](auto &&arg) -> VariableTypes
+                      {
+                          using T = std::decay_t<decltype(arg)>;
 
-        if constexpr (std::is_same_v<T, int>)
-            return VariableTypes::Int;
-        else if constexpr (std::is_same_v<T, double>)
-            return VariableTypes::Double;
-        else if constexpr (std::is_same_v<T, bool>)
-            return VariableTypes::Bool;
-        else if constexpr (std::is_same_v<T, std::string>)
-            return VariableTypes::String;
-        else if constexpr(std::is_same_v<T,std::monostate>)
-            return VariableTypes::Null;
+                          if constexpr (std::is_same_v<T, int>)
+                              return VariableTypes::Int;
+                          else if constexpr (std::is_same_v<T, double>)
+                              return VariableTypes::Double;
+                          else if constexpr (std::is_same_v<T, bool>)
+                              return VariableTypes::Bool;
+                          else if constexpr (std::is_same_v<T, std::string>)
+                              return VariableTypes::String;
+                          else if constexpr (std::is_same_v<T, std::monostate>)
+                              return VariableTypes::Null;
 
-        else if constexpr(std::is_same_v<T,ArrayPtr>)
-            return VariableTypes::Array;
-
-    }, value);
+                          else if constexpr (std::is_same_v<T, ArrayPtr>)
+                              return VariableTypes::Array;
+                      },
+                      value);
 }
 
 int precedence(TokenType type)
@@ -134,16 +136,13 @@ int precedence(TokenType type)
     case TokenType::OrOr:
         return 1;
 
-
     case TokenType::AndAnd:
         return 2;
-
 
     case TokenType::EqualEqual:
     case TokenType::NotEqual:
     case TokenType::TypeEquality:
         return 3;
-
 
     case TokenType::Bigger:
     case TokenType::BiggerEqual:
@@ -151,17 +150,14 @@ int precedence(TokenType type)
     case TokenType::SmallerEqual:
         return 4;
 
-
     case TokenType::Plus:
     case TokenType::Minus:
         return 5;
-
 
     case TokenType::Multiply:
     case TokenType::Division:
     case TokenType::Remainder:
         return 6;
-
 
     case TokenType::Not:
 
@@ -178,25 +174,25 @@ int precedence(TokenType type)
 std::string variantToString(const Value &a)
 {
     return std::visit([](const auto &arg) -> std::string
-    {
-        using T = std::decay_t<decltype(arg)>;
+                      {
+                          using T = std::decay_t<decltype(arg)>;
 
-        if constexpr (std::is_same_v<T, std::monostate>)
-        {
-            return "null";
-        }
-        else if constexpr (std::is_same_v<T, std::shared_ptr<ArrayValue>>)
-        {
-            return arrayToString(arg);
-        }
-        else
-        {
-            std::ostringstream oss;
-            oss << arg;
-            return oss.str();
-        }
-
-    }, a);
+                          if constexpr (std::is_same_v<T, std::monostate>)
+                          {
+                              return "null";
+                          }
+                          else if constexpr (std::is_same_v<T, std::shared_ptr<ArrayValue>>)
+                          {
+                              return arrayToString(arg);
+                          }
+                          else
+                          {
+                              std::ostringstream oss;
+                              oss << arg;
+                              return oss.str();
+                          }
+                      },
+                      a);
 }
 
 bool isUnary(const std::vector<Token> &tokens, int index)
@@ -226,17 +222,12 @@ bool isUnary(const std::vector<Token> &tokens, int index)
            precedence(prev) != -1;
 }
 
-bool isInVariables(Token tok, VariableTable variables)
+bool isInVariables(
+    const Token& tok,
+    const VariableTable& variables)
 {
-    auto it = variables.find(variantToString(tok.value));
-    if (it != variables.end())
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return variables.find(variantToString(tok.value))
+           != variables.end();
 }
 
 VariableData *getVariable(std::string name, ScopeStack &scopes)
@@ -286,20 +277,21 @@ bool variantToBool(const Value &value)
 }
 
 Value ExecuteFunction(
-    const std::string &name,
-    const std::vector<std::vector<Token>> &arguments,
-    FunctionTable &ftable,
-    ScopeStack &scopeStack)
+    const std::string& name,
+    const std::vector<TokenRange>& arguments,
+    FunctionTable& ftable,
+    ScopeStack& scopeStack)
 {
     auto it = ftable.find(name);
 
     if (it == ftable.end())
     {
-        std::cerr << "Error: function " << name << " does not exist\n";
+        std::cerr << "Error: function " << name
+                  << " does not exist\n";
         return Value{};
     }
 
-    const GFunction &targetFunc = it->second;
+    const GFunction& targetFunc = it->second;
 
     if (arguments.size() != targetFunc.locals.size())
     {
@@ -319,18 +311,20 @@ Value ExecuteFunction(
     {
         VariableData var = targetFunc.locals[k];
 
-        var.value =
-            Evaluate(arguments[k],
-                     0,
-                     arguments[k].size() - 1,
-                     scopeStack, ftable);
+        var.value = Evaluate(
+            arguments[k],
+            scopeStack,
+            ftable
+        );
 
-        bufferTable[var.name] = var;
+        bufferTable[var.name] = std::move(var);
     }
 
     scopeStack.push_back(std::move(bufferTable));
 
-    const ExecutionResult & result = interpret(targetFunc.body, scopeStack,ftable);
+    const ExecutionResult& result =
+        interpret(targetFunc.body, scopeStack, ftable);
+
     scopeStack.pop_back();
 
     if (result.didReturn)
@@ -341,15 +335,15 @@ Value ExecuteFunction(
     return Value{};
 }
 
-std::string arrayToString(const std::shared_ptr<ArrayValue>& array)
+std::string arrayToString(const std::shared_ptr<ArrayValue> &array)
 {
     std::string result = "[";
 
-    for(size_t i = 0; i < array->values.size(); i++)
+    for (size_t i = 0; i < array->values.size(); i++)
     {
         result += variantToString(array->values[i]);
 
-        if(i != array->values.size() - 1)
+        if (i != array->values.size() - 1)
             result += ",";
     }
 
@@ -358,27 +352,25 @@ std::string arrayToString(const std::shared_ptr<ArrayValue>& array)
     return result;
 }
 
-Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack &scope, FunctionTable &functionTable)
+Value Evaluate(
+    const TokenRange& tokens,
+    ScopeStack& scope,
+    FunctionTable& functionTable)
 {
-    if (tokens.empty())
-    {
+    if (tokens.size() == 0)
         throw std::runtime_error("Cannot evaluate empty expression");
-    }
 
-    if (left < 0 || right >= (int)tokens.size() || left > right)
-    {
-        throw std::runtime_error("Invalid evaluation range");
-    }
-    if (tokens[left].type == TokenType::Identifier)
+
+    if (tokens[0].type == TokenType::Identifier)
     {
         int parenIndex = -1;
 
-        //Find the opening parenthesis after the function path
-        for (int i = left; i <= right; i++)
+        // Find opening parenthesis after function path
+        for (size_t i = 0; i < tokens.size(); ++i)
         {
             if (tokens[i].type == TokenType::LParen)
             {
-                parenIndex = i;
+                parenIndex = static_cast<int>(i);
                 break;
             }
 
@@ -392,9 +384,9 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         if (parenIndex != -1)
         {
             int depth = 1;
-            int closing = parenIndex;
+            size_t closing = parenIndex;
 
-            while (++closing <= right)
+            while (++closing < tokens.size())
             {
                 if (tokens[closing].type == TokenType::LParen)
                     depth++;
@@ -408,110 +400,124 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
                 }
             }
 
-            if (closing == right)
+            if (closing == tokens.size())
+                throw std::runtime_error("Unclosed function call");
+
+            if (closing == tokens.size() - 1)
             {
-                std::vector<std::vector<Token>> bufferArg;
-                std::vector<Token> current;
+
+                std::vector<TokenRange> bufferArg;
 
                 int argDepth = 1;
+                size_t argStart = parenIndex + 1;
 
-                for (int i = parenIndex + 1; i <= right; i++)
+                for (size_t i = parenIndex + 1;
+                     i < closing;
+                     ++i)
                 {
-                    const Token  & currentToken = tokens[i];
+                    const Token& currentToken = tokens[i];
 
                     if (currentToken.type == TokenType::LParen)
                     {
                         argDepth++;
-                        current.push_back(std::move(currentToken));
                     }
                     else if (currentToken.type == TokenType::RParen)
                     {
                         argDepth--;
 
                         if (argDepth == 0)
-                        {
-                            if (!current.empty())
-                                bufferArg.push_back(std::move(current));
-
                             break;
-                        }
-
-                        current.push_back(std::move(currentToken));
                     }
                     else if (currentToken.type == TokenType::Comma &&
                              argDepth == 1)
                     {
-                        bufferArg.push_back(std::move(current));
-                        current.clear();
-                    }
-                    else
-                    {
-                        current.push_back(std::move(currentToken));
+                        // Only add non-empty argument
+                        if (argStart < i)
+                        {
+                            bufferArg.push_back(
+                                tokens.subrange(
+                                    argStart,
+                                    i - 1));
+                        }
+
+                        argStart = i + 1;
                     }
                 }
 
-                std::vector<std::string> funcPath;
+                //last argument
+                if (argStart < closing)
+                {
+                    bufferArg.push_back(
+                        tokens.subrange(
+                            argStart,
+                            closing - 1));
+                }
 
-                for (int i = left; i < parenIndex; i++)
+
+
+                std::string funcPath;
+
+                for (int i = 0; i < parenIndex; ++i)
                 {
                     if (tokens[i].type == TokenType::Identifier)
                     {
-                        funcPath.push_back(
-                            variantToString(tokens[i].value));
+                        if (!funcPath.empty())
+                            funcPath += '.';
+
+                        funcPath += variantToString(tokens[i].value);
                     }
                 }
-                
-                //*\\_//*\\_//*\\_//*\\_//*\\_//*\\_//*\\_//*\\_
+
                 return ExecuteFunction(
-                    std::move(joinpath(funcPath, ".")),
-                    std::move(bufferArg),
+                    std::move(funcPath),
+                    bufferArg,
                     functionTable,
                     scope);
             }
         }
     }
 
-    // Invalid range
-    if (left > right)
-        throw std::runtime_error("Invalid expression.");
-
-    // Single value
-    if (left == right)
+    if (tokens.size() == 1)
     {
-        if (tokens[left].type == TokenType::Identifier)
+        if (tokens[0].type == TokenType::Identifier)
         {
-            VariableData *variable = getVariable(
-                variantToString(tokens[left].value),
+            VariableData* variable = getVariable(
+                variantToString(tokens[0].value),
                 scope);
 
             if (variable == nullptr)
             {
                 throw std::runtime_error(
-                    "Unknown identifier in eval " + variantToString(tokens[left].value));
+                    "Unknown identifier in eval " +
+                    variantToString(tokens[0].value));
             }
 
             return variable->value;
         }
 
-        return tokens[left].value;
+        return tokens[0].value;
     }
 
-    // Strip outer parentheses
-    while (tokens[left].type == TokenType::LParen &&
-           tokens[right].type == TokenType::RParen)
+
+
+    TokenRange range = tokens;
+
+    while (range.size() >= 2 &&
+           range[0].type == TokenType::LParen &&
+           range[range.size() - 1].type == TokenType::RParen)
     {
         int depth = 0;
         bool wraps = true;
 
-        for (int i = left; i <= right; i++)
+        for (size_t i = 0; i < range.size(); ++i)
         {
-            if (tokens[i].type == TokenType::LParen)
+            if (range[i].type == TokenType::LParen)
                 depth++;
 
-            else if (tokens[i].type == TokenType::RParen)
+            else if (range[i].type == TokenType::RParen)
                 depth--;
 
-            if (depth == 0 && i != right)
+            if (depth == 0 && i != range.size() - 1)
             {
                 wraps = false;
                 break;
@@ -521,72 +527,87 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         if (!wraps)
             break;
 
-        left++;
-        right--;
-    }
-    if (tokens[left].type == TokenType::LBrac)
-{
-    int depth = 1;
-    int closing = left;
-
-    while (++closing <= right)
-    {
-        if(tokens[closing].type == TokenType::LBrac)
-            depth++;
-
-        else if(tokens[closing].type == TokenType::RBrac)
-        {
-            depth--;
-
-            if(depth == 0)
-                break;
-        }
+        range = range.subrange(
+            1,
+            range.size() - 2);
     }
 
-    if(closing == right)
+
+    if (range[0].type == TokenType::LBrac)
     {
-        auto array = std::make_shared<ArrayValue>();
+        int depth = 1;
+        size_t closing = 0;
 
-        int start = left + 1;
-        int depth = 0;
-
-        for(int i = start; i < right; i++)
+        while (++closing < range.size())
         {
-            if(tokens[i].type == TokenType::LParen ||
-               tokens[i].type == TokenType::LBrac)
+            if (range[closing].type == TokenType::LBrac)
                 depth++;
 
-            else if(tokens[i].type == TokenType::RParen ||
-                    tokens[i].type == TokenType::RBrac)
+            else if (range[closing].type == TokenType::RBrac)
+            {
                 depth--;
 
-            if(tokens[i].type == TokenType::Comma && depth == 0)
-            {
-                array->values.push_back(
-                    Evaluate(tokens,start,i-1,scope,functionTable)
-                );
-
-                start = i + 1;
+                if (depth == 0)
+                    break;
             }
         }
 
-        // last element
-        if(start < right)
+        if (closing == range.size() - 1)
         {
-            array->values.push_back(
-                Evaluate(tokens,start,right-1,scope,functionTable)
-            );
-        }
-        std::cout << arrayToString(array);
-        return array;
-    }
-}
-    // Prefix unary operators
-    if (isUnary(tokens, left))
-    {
-        Value rhs = Evaluate(tokens, left + 1, right, scope, functionTable);
+            auto array = std::make_shared<ArrayValue>();
 
-        switch (tokens[left].type)
+            size_t start = 1;
+            int elementDepth = 0;
+
+            for (size_t i = start; i < closing; ++i)
+            {
+                if (range[i].type == TokenType::LParen ||
+                    range[i].type == TokenType::LBrac)
+                {
+                    elementDepth++;
+                }
+                else if (range[i].type == TokenType::RParen ||
+                         range[i].type == TokenType::RBrac)
+                {
+                    elementDepth--;
+                }
+
+                if (range[i].type == TokenType::Comma &&
+                    elementDepth == 0)
+                {
+                    array->values.push_back(
+                        Evaluate(
+                            range.subrange(start, i - 1),
+                            scope,
+                            functionTable));
+
+                    start = i + 1;
+                }
+            }
+
+            //last element
+            if (start < closing)
+            {
+                array->values.push_back(
+                    Evaluate(
+                        range.subrange(start, closing - 1),
+                        scope,
+                        functionTable));
+            }
+
+            return array;
+        }
+    }
+
+
+    if (isUnary(*range.tokens, range.start))
+    {
+        Value rhs = Evaluate(
+            range.subrange(1, range.size() - 1),
+            scope,
+            functionTable);
+
+        switch (range[0].type)
         {
         case TokenType::Not:
             return !variantToBool(rhs);
@@ -602,20 +623,19 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         }
     }
 
-    // Find split operator
     int split = -1;
     int lowestPrec = INT_MAX;
     int depth = 0;
 
-    for (int i = left; i <= right; i++)
+    for (size_t i = 0; i < range.size(); ++i)
     {
-        if (tokens[i].type == TokenType::LParen)
+        if (range[i].type == TokenType::LParen)
         {
             depth++;
             continue;
         }
 
-        if (tokens[i].type == TokenType::RParen)
+        if (range[i].type == TokenType::RParen)
         {
             depth--;
             continue;
@@ -624,11 +644,11 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         if (depth != 0)
             continue;
 
-        // Ignore unary operators here
-        if (isUnary(tokens, i))
+        // Ignore unary operators
+        if (isUnary(*range.tokens, range.start + i))
             continue;
 
-        int prec = precedence(tokens[i].type);
+        int prec = precedence(range[i].type);
 
         if (prec == -1)
             continue;
@@ -636,124 +656,164 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
         if (prec < lowestPrec)
         {
             lowestPrec = prec;
-            split = i;
+            split = static_cast<int>(i);
         }
         else if (prec == lowestPrec &&
-                 associativity(tokens[i].type) == Associativity::Left)
+                 associativity(range[i].type) == Associativity::Left)
         {
-            split = i;
+            split = static_cast<int>(i);
         }
     }
-    if (tokens[right].type == TokenType::RBrac)
-{
-    int depth = 0;
-    int open = -1;
 
-    for (int i = right; i >= left; i--)
+
+
+    if (range[range.size() - 1].type == TokenType::RBrac)
     {
-        if(tokens[i].type == TokenType::RBrac)
-            depth++;
+        int depth = 0;
+        int open = -1;
 
-        else if(tokens[i].type == TokenType::LBrac)
+        for (int i = static_cast<int>(range.size()) - 1;
+             i >= 0;
+             --i)
         {
-            depth--;
+            if (range[i].type == TokenType::RBrac)
+                depth++;
 
-            if(depth == 0)
+            else if (range[i].type == TokenType::LBrac)
             {
-                open = i;
-                break;
+                depth--;
+
+                if (depth == 0)
+                {
+                    open = i;
+                    break;
+                }
             }
         }
+
+        if (open != -1)
+        {
+            Value arrayValue = Evaluate(
+                range.subrange(0, open - 1),
+                scope,
+                functionTable);
+
+            Value indexValue = Evaluate(
+                range.subrange(open + 1, range.size() - 2),
+                scope,
+                functionTable);
+
+            if (!std::holds_alternative<
+                    std::shared_ptr<ArrayValue>>(arrayValue))
+            {
+                throw std::runtime_error(
+                    "Cannot index non-array");
+            }
+
+            auto array =
+                std::get<std::shared_ptr<ArrayValue>>(arrayValue);
+
+            int index = variantToInt(indexValue);
+
+            if (index < 0 ||
+                index >= static_cast<int>(array->values.size()))
+            {
+                throw std::runtime_error(
+                    "Array index out of bounds");
+            }
+
+            return array->values[index];
+        }
     }
 
-    if(open != -1)
-    {
-        Value arrayValue = Evaluate(tokens, left, open - 1, scope, functionTable);
 
-        Value indexValue = Evaluate(tokens,
-                                    open + 1,
-                                    right - 1,
-                                    scope,
-                                    functionTable);
 
-        if(!std::holds_alternative<std::shared_ptr<ArrayValue>>(arrayValue))
-            throw std::runtime_error("Cannot index non-array");
-
-        auto array = std::get<std::shared_ptr<ArrayValue>>(arrayValue);
-
-        int index = variantToInt(indexValue);
-
-        if(index < 0 || index >= array->values.size())
-            throw std::runtime_error("Array index out of bounds");
-
-        return array->values[index];
-    }
-}
     if (split == -1)
         throw std::runtime_error("No operator found.");
 
-    const Value & lhs = Evaluate(tokens, left, split - 1, scope, functionTable);
-    const Value & rhs = Evaluate(tokens, split + 1, right, scope, functionTable);
-    switch (tokens[split].type)
-    {
 
+    Value lhs = Evaluate(
+        range.subrange(0, split - 1),
+        scope,
+        functionTable);
+
+    Value rhs = Evaluate(
+        range.subrange(split + 1, range.size() - 1),
+        scope,
+        functionTable);
+
+
+
+    switch (range[split].type)
+    {
     case TokenType::Plus:
-        if (std::holds_alternative<std::string>(lhs) && std::holds_alternative<std::string>(rhs) || (std::holds_alternative<std::string>(lhs) || std::holds_alternative<std::string>(rhs)))
+
+        if (std::holds_alternative<std::string>(lhs) ||
+            std::holds_alternative<std::string>(rhs))
         {
-            return variantToString(lhs).append(variantToString(rhs));
+            return variantToString(lhs) +
+                   variantToString(rhs);
         }
-        else
-        {
-            return variantToDouble(lhs) + variantToDouble(rhs);
-        }
+
+        return variantToDouble(lhs) +
+               variantToDouble(rhs);
+
     case TokenType::Remainder:
-        return std::fmod(variantToDouble(lhs),variantToDouble(rhs));
+        return std::fmod(
+            variantToDouble(lhs),
+            variantToDouble(rhs));
+
     case TokenType::Minus:
-        return variantToDouble(lhs) - variantToDouble(rhs);
+        return variantToDouble(lhs) -
+               variantToDouble(rhs);
 
     case TokenType::Multiply:
+
         if (std::holds_alternative<std::string>(lhs) &&
             std::holds_alternative<int>(rhs))
         {
-            const std::string &str = std::get<std::string>(lhs);
+            const std::string& str =
+                std::get<std::string>(lhs);
+
             int count = std::get<int>(rhs);
 
             std::string buffer;
             buffer.reserve(str.size() * count);
 
             for (int i = 0; i < count; ++i)
-            {
                 buffer += str;
-            }
 
             return buffer;
         }
-        else if (std::holds_alternative<int>(lhs) &&
-                 std::holds_alternative<std::string>(rhs))
+
+        if (std::holds_alternative<int>(lhs) &&
+            std::holds_alternative<std::string>(rhs))
         {
-            const std::string &str = std::get<std::string>(rhs);
+            const std::string& str =
+                std::get<std::string>(rhs);
+
             int count = std::get<int>(lhs);
 
             std::string buffer;
             buffer.reserve(str.size() * count);
 
             for (int i = 0; i < count; ++i)
-            {
                 buffer += str;
-            }
 
             return buffer;
         }
-        else
-        {
-            return variantToDouble(lhs) * variantToDouble(rhs);
-        }
+
+        return variantToDouble(lhs) *
+               variantToDouble(rhs);
 
     case TokenType::Division:
-        return variantToDouble(lhs) / variantToDouble(rhs);
+        return variantToDouble(lhs) /
+               variantToDouble(rhs);
 
     case TokenType::Power:
-        return std::pow(variantToDouble(lhs), variantToDouble(rhs));
+        return std::pow(
+            variantToDouble(lhs),
+            variantToDouble(rhs));
 
     case TokenType::EqualEqual:
     {
@@ -766,20 +826,15 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             std::holds_alternative<double>(rhs);
 
         if (lhsNumeric && rhsNumeric)
-            return variantToDouble(lhs) == variantToDouble(rhs);
+            return variantToDouble(lhs) ==
+                   variantToDouble(rhs);
 
         return lhs == rhs;
     }
 
     case TokenType::TypeEquality:
-    {
-        if (getType(rhs) == getType(lhs)){
-            return true;
-        }else{
-            return false;
-        }
+        return getType(lhs) == getType(rhs);
 
-    }
     case TokenType::NotEqual:
     {
         bool lhsNumeric =
@@ -791,7 +846,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             std::holds_alternative<double>(rhs);
 
         if (lhsNumeric && rhsNumeric)
-            return variantToDouble(lhs) != variantToDouble(rhs);
+            return variantToDouble(lhs) !=
+                   variantToDouble(rhs);
 
         return lhs != rhs;
     }
@@ -807,7 +863,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             std::holds_alternative<double>(rhs);
 
         if (lhsNumeric && rhsNumeric)
-            return variantToDouble(lhs) > variantToDouble(rhs);
+            return variantToDouble(lhs) >
+                   variantToDouble(rhs);
 
         return lhs > rhs;
     }
@@ -823,7 +880,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             std::holds_alternative<double>(rhs);
 
         if (lhsNumeric && rhsNumeric)
-            return variantToDouble(lhs) < variantToDouble(rhs);
+            return variantToDouble(lhs) <
+                   variantToDouble(rhs);
 
         return lhs < rhs;
     }
@@ -839,7 +897,8 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             std::holds_alternative<double>(rhs);
 
         if (lhsNumeric && rhsNumeric)
-            return variantToDouble(lhs) >= variantToDouble(rhs);
+            return variantToDouble(lhs) >=
+                   variantToDouble(rhs);
 
         return lhs >= rhs;
     }
@@ -855,16 +914,20 @@ Value Evaluate(const std::vector<Token> &tokens, int left, int right, ScopeStack
             std::holds_alternative<double>(rhs);
 
         if (lhsNumeric && rhsNumeric)
-            return variantToDouble(lhs) <= variantToDouble(rhs);
+            return variantToDouble(lhs) <=
+                   variantToDouble(rhs);
 
         return lhs <= rhs;
     }
 
     case TokenType::AndAnd:
-        return variantToBool(lhs) && variantToBool(rhs);
+        return variantToBool(lhs) &&
+               variantToBool(rhs);
 
     case TokenType::OrOr:
-        return variantToBool(lhs) || variantToBool(rhs);
+        return variantToBool(lhs) ||
+               variantToBool(rhs);
+
     default:
         throw std::runtime_error("Unknown operator.");
     }
@@ -884,36 +947,40 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
         std::string value = variantToString(tok.value);
         if (tok.type == TokenType::Identifier)
         { // could be a function,if,for,while,fn,var,const,strict or a function call like Terminal.IO.print("hello world!");
-            if(value == "use"){
-            instr.type = Instruction::Types::Use;
-            i++; 
-            while(input[i].type == TokenType::NewLine){
+            if (value == "use")
+            {
+                instr.type = Instruction::Types::Use;
                 i++;
-            }
-            if (input[i].type != TokenType::LCurl && input[i].type != TokenType::String)
-            {
-                std::cerr <<"expected { or a string after use";
-            }
-
-            if(input[i].type == TokenType::String){
-                instr.importPath.push_back (variantToString(input[i].value));
-            }else{
-
-            i++; // skip {
-
-            while (i < input.size() && input[i].type != TokenType::RCurl)
-            {
-                if (input[i].type == TokenType::String)
+                while (input[i].type == TokenType::NewLine)
                 {
-                    instr.importPath.push_back(
-                        variantToString(input[i].value)
-                    );
+                    i++;
+                }
+                if (input[i].type != TokenType::LCurl && input[i].type != TokenType::String)
+                {
+                    std::cerr << "expected { or a string after use";
                 }
 
-                i++;
-            }
-        }
-            instructions.push_back(std::move(instr));
+                if (input[i].type == TokenType::String)
+                {
+                    instr.importPath.push_back(variantToString(input[i].value));
+                }
+                else
+                {
+
+                    i++; // skip {
+
+                    while (i < input.size() && input[i].type != TokenType::RCurl)
+                    {
+                        if (input[i].type == TokenType::String)
+                        {
+                            instr.importPath.push_back(
+                                variantToString(input[i].value));
+                        }
+
+                        i++;
+                    }
+                }
+                instructions.push_back(std::move(instr));
             }
 
             else if (value == "fn")
@@ -925,14 +992,13 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 {
                     std::string functionName = variantToString(input[i + 1].value);
 
-if (!path.empty())
-{
-    std::string prefix = joinpath(path, ".");
+                    if (!path.empty())
+                    {
+                        std::string prefix = joinpath(path, ".");
 
-
-    functionName = prefix + "." + functionName;
-}
-instr.Funcname = functionName;
+                        functionName = prefix + "." + functionName;
+                    }
+                    instr.Funcname = functionName;
 
                     i++;
                 }
@@ -986,6 +1052,8 @@ instr.Funcname = functionName;
                             instr.locals[slot].vartype = VariableTypes::Bool;
                         else if (name == "double")
                             instr.locals[slot].vartype = VariableTypes::Double;
+                        else if (name == "value[]")
+                            instr.locals[slot].vartype = VariableTypes::Array;
                         else
                             instr.locals[slot].name = name;
                     }
@@ -1386,6 +1454,49 @@ instr.Funcname = functionName;
                 instructions.push_back(std::move(instr));
                 continue;
             }
+            else if (i + 1 < input.size() &&
+                     input[i + 1].type == TokenType::LBrac)
+            {
+                instr.vardata.name = variantToString(input[i].value);
+                instr.type = Instruction::Types::Assign;
+
+                int j = i + 2;
+
+                
+                while (j < input.size() &&
+                       input[j].type != TokenType::RBrac)
+                {
+                    instr.indexExpression.push_back(input[j]);
+                    j++;
+                }
+
+                if (j >= input.size())
+                    throw std::runtime_error("Missing closing ']'");
+
+                
+                i = j;
+
+                
+                if (j + 1 < input.size() &&
+                    input[j + 1].type == TokenType::Equals)
+                {
+                    int a = j + 2;
+
+                    // Read assignment expression
+                    while (a < input.size() &&
+                           input[a].type != TokenType::NewLine &&
+                           input[a].type != TokenType::Semicolon)
+                    {
+                        instr.expression.push_back(input[a]);
+                        a++;
+                    }
+
+                    i = a;
+
+                    instructions.push_back(std::move(instr));
+                    continue;
+                }
+            }
             else if (
                 (i + 1 < input.size() &&
                  (input[i + 1].type == TokenType::LParen ||
@@ -1466,7 +1577,7 @@ instr.Funcname = functionName;
                             }
                         }
 
-                        //Remove empty argument caused by ()
+                        
                         if (instr.arguments.size() == 1 && instr.arguments[0].empty())
                         {
                             instr.arguments.clear();
@@ -1476,7 +1587,6 @@ instr.Funcname = functionName;
                     break;
                 }
 
-                
                 instructions.push_back(std::move(instr));
             }
         }

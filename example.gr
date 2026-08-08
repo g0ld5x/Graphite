@@ -1,3 +1,6 @@
 use "stdlib"
 
-var x = [1,2,3,4,5]
+
+var x = [1,2,3,4];
+
+std.print(std.size(x))

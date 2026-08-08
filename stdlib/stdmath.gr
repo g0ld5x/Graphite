@@ -34,7 +34,6 @@ space std {
 
     fn pow(base, exponent) {
         var result = 1;
-
         while (exponent > 0) {
             result = result * base;
             exponent = exponent - 1;

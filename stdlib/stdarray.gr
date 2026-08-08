@@ -1,0 +1,7 @@
+space std{
+    fn size(value[] array){
+        var val = 0;
+        size(array,val);
+        return val;
+    }
+}
