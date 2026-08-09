@@ -40,11 +40,11 @@ enum class TokenType
     LBrac = '[',
     RBrac = ']',
     RParen = ')',     // )
-    String = 'S',     // "hi lol"
+    String = 'S',     // "hello (:"
     Power = '^',
     Remainder = '%',
     Number = 'N', 
-    Comma,    // 100 or 12 or 31
+    Comma,    // 100 or 12 or 31 etc. etc.
     Dot = '.',        // usecase will be choosen depending on the context by the parser
     Plus = '+',       //+
     Minus = '-',      //-

@@ -6,4 +6,5 @@ export
     "stdtypes.gr"
     "stdcast.gr"
     "stdarray.gr"
+    "stdstring.gr"
 }

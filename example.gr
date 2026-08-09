@@ -1,6 +1,3 @@
 use "stdlib"
 
-
-var x = [1,2,3,4];
-
-std.print(std.size(x))
+var a = ["hello","hi","aa"]

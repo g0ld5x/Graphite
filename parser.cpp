@@ -691,39 +691,53 @@ Value Evaluate(
             }
         }
 
-        if (open != -1)
+if (open != -1)
+{
+    Value containerValue = Evaluate(
+        range.subrange(0, open - 1),
+        scope,
+        functionTable);
+
+    Value indexValue = Evaluate(
+        range.subrange(open + 1, range.size() - 2),
+        scope,
+        functionTable);
+
+    int index = variantToInt(indexValue);
+
+    if (std::holds_alternative<std::shared_ptr<ArrayValue>>(containerValue))
+    {
+        auto array =
+            std::get<std::shared_ptr<ArrayValue>>(containerValue);
+
+        if (index < 0 ||
+            index >= static_cast<int>(array->values.size()))
         {
-            Value arrayValue = Evaluate(
-                range.subrange(0, open - 1),
-                scope,
-                functionTable);
-
-            Value indexValue = Evaluate(
-                range.subrange(open + 1, range.size() - 2),
-                scope,
-                functionTable);
-
-            if (!std::holds_alternative<
-                    std::shared_ptr<ArrayValue>>(arrayValue))
-            {
-                throw std::runtime_error(
-                    "Cannot index non-array");
-            }
-
-            auto array =
-                std::get<std::shared_ptr<ArrayValue>>(arrayValue);
-
-            int index = variantToInt(indexValue);
-
-            if (index < 0 ||
-                index >= static_cast<int>(array->values.size()))
-            {
-                throw std::runtime_error(
-                    "Array index out of bounds");
-            }
-
-            return array->values[index];
+            throw std::runtime_error(
+                "Array index out of bounds");
         }
+
+        return array->values[index];
+    }
+
+    if (std::holds_alternative<std::string>(containerValue))
+    {
+        const std::string &str =
+            std::get<std::string>(containerValue);
+
+        if (index < 0 ||
+            index >= static_cast<int>(str.size()))
+        {
+            throw std::runtime_error(
+                "String index out of bounds");
+        }
+
+        return std::string(1, str[index]);
+    }
+
+    throw std::runtime_error(
+        "Cannot index non-array or string value");
+}
     }
 
 
@@ -747,7 +761,6 @@ Value Evaluate(
     switch (range[split].type)
     {
     case TokenType::Plus:
-
         if (std::holds_alternative<std::string>(lhs) ||
             std::holds_alternative<std::string>(rhs))
         {

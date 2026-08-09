@@ -14,5 +14,8 @@ space std{
         fn double(){
             return 0.000;
         }
+        fn array(){
+            return [0]
+        }
     }
 }

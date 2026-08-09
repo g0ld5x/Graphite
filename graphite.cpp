@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
                 std::cerr << "Could not open file: " << currentArg << "\n";
                 continue;
             }
-
+            
             std::stringstream buffer;
             buffer << File.rdbuf();
 

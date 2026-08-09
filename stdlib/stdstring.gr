@@ -1,0 +1,29 @@
+space std{
+    fn size(string str){
+        var val = 0;
+        size(str, val);
+        return val;
+    }
+
+    fn split(string input, string delimiter){
+        var split1 = "";
+        var split2 = "";
+        var switchToSplit2 = false;
+        var i = 0;
+
+        while(i < std.size(input)){
+            if(input[i] == delimiter){
+                switchToSplit2 = true;
+            }
+            else if(switchToSplit2 == false){
+                split1 = split1 + input[i];
+            }
+            else{
+                split2 = split2 + input[i];
+            }
+            i = i + 1;
+        }
+
+        return [split1, split2];
+    }
+}

@@ -413,17 +413,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         }
         else if (instr.type == Instruction::Types::Use)
         {
-            if (dependenciesEncountered)
-            {
-                std::cerr << "Error: keyword use can only be used once per file.";
-            }
-            if (i != 0)
-            {
-                std::cerr << "Error: Dependencies must be listed at the top of the code!";
-            }
 
-            else
-            {
                 // normal route
                 for (size_t i = 0; i < instr.importPath.size(); i++)
                 {
@@ -431,8 +421,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     ScopeStack importScope;
                     interpret(parse(resolveFile(instr.importPath[i]), a), importScope, GlobalFunctionTable);
                 }
-            }
-            dependenciesEncountered = true;
+
         }
         else if (instr.type == Instruction::Types::Space)
         {
