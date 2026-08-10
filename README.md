@@ -1,9 +1,13 @@
-"Programs must be written for people to read, and only incidentally for machines to execute."  — Harold Abelson
+# Graphite
 
+> **"Programs must be written for people to read, and only incidentally for machines to execute."**
+> — Harold Abelson
 
---GRAPHITE--
+## Graphite
 
+A small showcase of Graphite's syntax and features:
 
+```graphite
 use "stdlib"
 
 fn graphite() {
@@ -11,17 +15,17 @@ fn graphite() {
 
     std.println("")
     std.println("    ╔══════════════════════════╗")
-    std.println("    ║        <GRAPHITE>        ║")
+    std.println("    ║                          ║")
     std.println("    ╠══════════════════════════╣")
 
     while (i < 3) {
         if (i == 0) {
-            std.println("    ║   -Simple syntax         ║")
+            std.println("    ║   - Simple syntax        ║")
         } else {
             if (i == 1) {
-                std.println("    ║   -User control          ║")
+                std.println("    ║   - User control         ║")
             } else {
-                std.println("    ║   -Built from scratch    ║")
+                std.println("    ║   - Built from scratch   ║")
             }
         }
 
@@ -35,127 +39,240 @@ fn graphite() {
 }
 
 graphite()
+```
 
+---
 
-::Variable Decleration::
+## Variable Declaration
 
-var x = 32; // semicolons are optional. and this is a comment!
-const x = 32; // constant values cannot be changed.
+```graphite
+var x = 32
+const x = 32
+```
 
-global var x = 32; //global variables are accesible no matter their scope.
+Semicolons are optional, and `//` is used for comments.
 
-strict var x = 32; // the strict keyword makes it so that type changes arent allowed in runtime.
-// if you try to do x = "test"; you will get an error.
+```graphite
+var x = 32; // This is also valid.
+```
 
-strict global var x = 32; 
-global strict var x = 32;
+### Global Variables
 
+```graphite
+global var x = 32
+```
 
-// these are both accepted. There is no spesific order when using the global and strict keywords.
-::The Standart Library::
+Global variables are accessible regardless of their scope.
 
+### Strict Variables
+
+The `strict` keyword prevents a variable's type from changing at runtime.
+
+```graphite
+strict var x = 32
+
+x = "test" // Error
+```
+
+`global` and `strict` can be used in either order:
+
+```graphite
+strict global var x = 32
+global strict var x = 32
+```
+
+---
+
+## Standard Library
+
+The standard library can be imported using:
+
+```graphite
 use "stdlib"
+```
 
-//or
+or:
 
-use{
+```graphite
+use {
     "stdlib"
 }
+```
 
-// note that when you are importing directly a folder that folder must have a .grh file that lists all the exportable files.
+When importing a folder directly, the folder must contain a `.grh` file specifying which files are exportable.
 
-::Function Declaration::
+---
 
-//functions are declared as shown:
+## Function Declaration
 
-fn test(int a,int b){ 
-    return a + b;
+Functions are declared using `fn`:
+
+```graphite
+fn test(int a, int b) {
+    return a + b
 }
+```
 
-// you can specify parameter types using int,string,double,bool, or value[] for array values. Or you can leave them unspecified like fn test (a,b);
+Parameter types can be specified using:
 
-::Basic Hello World::
+* `int`
+* `string`
+* `double`
+* `bool`
+* `value[]` for arrays
 
--Example.gr-
+Parameters can also be left untyped:
 
--1 use "stdlib";
--2 std.print("Hello World!");
-
-// note that semicolons are optional, I use semicolons in examples because i am familiar with using them. Newlines work just as fine.
-
-::Arrays::
-
-// you can define arrays as shown:
-
-var x = [1,2,3,4,5]; // note that arrays dont force the type inside to be the same.
-
-var y = [1,2,3,"hello",true,3.14,["G","r"]];
-
-::Loops::
-
-1-While
-2-For (In construction, yet to be implemented.)
-
-// An example while loop that gets user input and prints it.
-
-use "stdlib";
-
-while(true){
-    var userInput= std.input(); // or you can use the std.prompt to show a message inside.
-    std.print(userInput);
+```graphite
+fn test(a, b) {
+    return a + b
 }
+```
 
-// There are more interesting examples in the Examples folder. Note that anything related to arrays is still being fixed and optimized so its almost guaranteed to have some undefined behaviour on some rarer use cases. Other than arrays the language is mostly ok
+---
 
-::Spaces::
+## Basic Hello World
 
-// you can create namespaces using the keyword space
+**Example.gr**
 
+```graphite
 use "stdlib"
 
-space Math{
-    fn add(a,b){return a+b;}
-}
+std.print("Hello World!")
+```
 
-std.print(Math.add(1,3));
+Semicolons are optional. They are used in some examples simply because they are familiar to programmers coming from languages such as C, C++, and Java.
 
-::If Else::
+Newlines work just as well.
 
+---
+
+## Arrays
+
+Arrays can contain values of different types:
+
+```graphite
+var x = [1, 2, 3, 4, 5]
+
+var y = [
+    1,
+    2,
+    3,
+    "hello",
+    true,
+    3.14,
+    ["G", "r"]
+]
+```
+
+> **Note:** Array functionality is still being worked on and optimized. Some less common use cases may currently result in undefined behavior.
+
+---
+
+## Loops
+
+Currently supported:
+
+1. `while`
+2. `for` — *under construction*
+
+### While
+
+```graphite
 use "stdlib"
 
-if(foo() isType std.type.string()){
-    std.print("foo() is a string");
+while (true) {
+    var userInput = std.input()
+    std.print(userInput)
+}
+```
+
+`std.input()` can also be used with a prompt where supported.
+
+---
+
+## Spaces
+
+Graphite uses the `space` keyword to create namespaces:
+
+```graphite
+use "stdlib"
+
+space Math {
+    fn add(a, b) {
+        return a + b
+    }
 }
 
-::Operators::
+std.print(Math.add(1, 3))
+```
 
-// Binary Operators
+---
 
-+,-,*,/,%,&&,||,^,<,>,==,!=,<=,>=,===
+## If / Else
 
-// Unary Operators
+```graphite
+use "stdlib"
 
-+,-,!
+if (foo() isType std.type.string()) {
+    std.print("foo() is a string")
+}
+```
 
-// Operators with keyword equivalents:
+---
 
-== is the same as 'is'
+## Operators
 
-&& is the same as 'and'
+### Binary Operators
 
-|| is the same as 'or'
+```text
++  -  *  /  %  &&  ||  ^
+<  >  ==  !=  <=  >=  ===
+```
 
-=== is the same as 'isType'
+### Unary Operators
 
-// the keyword equivalents behave exactly the same way.
+```text
++  -  !
+```
 
-:: A basic Delta V calculator::
+### Keyword Equivalents
 
+Some operators have keyword equivalents:
+
+| Operator | Keyword  |   |      |
+| -------- | -------- | - | ---- |
+| `==`     | `is`     |   |      |
+| `&&`     | `and`    |   |      |
+| `        |          | ` | `or` |
+| `===`    | `isType` |   |      |
+
+The keyword equivalents behave exactly the same as their operator counterparts.
+
+---
+
+## A Basic Delta-V Calculator
+
+Graphite can also be used for small scientific and engineering programs:
+
+```graphite
 use "stdlib"
 
 fn deltaV(isp, wetMass, dryMass) {
     const g0 = 9.806
+
     return isp * g0 * std.ln(wetMass / dryMass)
 }
 
 std.print(deltaV(180, 3000, 2600))
+```
+
+---
+
+## Status
+
+Graphite is still under development.
+
+The core language is functional, but some features—particularly arrays—are still being fixed and optimized.
+
+More examples can be found in the `Examples` folder.
