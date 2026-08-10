@@ -1,4 +1,7 @@
-The main goal of graphite is to have a simple syntax while granting the user control.
+"Programs must be written for people to read, and only incidentally for machines to execute."  — Harold Abelson
+
+
+--GRAPHITE--
 
 
 use "stdlib"
