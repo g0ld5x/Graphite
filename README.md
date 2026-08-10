@@ -244,7 +244,7 @@ Some operators have keyword equivalents:
 | -------- | -------- | 
 | `==`     | `is`     | 
 | `&&`     | `and`    |  
-| `||`     |  `or`    | 
+| ||       |  `or`    | 
 | `===`    | `isType` |  
 
 The keyword equivalents behave exactly the same as their operator counterparts.
