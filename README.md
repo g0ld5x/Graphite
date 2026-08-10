@@ -278,3 +278,11 @@ The core language is functional, but some features—particularly arrays—are s
 More examples can be found in the `Examples` folder.
 
 Also make sure to check out the documentation for more info!
+
+
+
+
+
+
+
+bonsoir elliot
