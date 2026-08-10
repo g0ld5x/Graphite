@@ -187,7 +187,7 @@ while (true) {
 }
 ```
 
-`std.input()` can also be used with a prompt where supported.
+'std.prompt(text)' can also be used to prompt text to the screen before the input.
 
 ---
 
