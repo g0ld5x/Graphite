@@ -146,3 +146,13 @@ if(foo() isType std.type.string()){
 
 // the keyword equivalents behave exactly the same way.
 
+:: A basic Delta V calculator::
+
+use "stdlib"
+
+fn deltaV(isp, wetMass, dryMass) {
+    const g0 = 9.806
+    return isp * g0 * std.ln(wetMass / dryMass)
+}
+
+std.print(deltaV(180, 3000, 2600))

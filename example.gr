@@ -1,31 +1,8 @@
 use "stdlib"
 
-fn graphite() {
-    var i = 0
-
-    std.println("")
-    std.println("    ╔══════════════════════════╗")
-    std.println("    ║        <GRAPHITE>        ║")
-    std.println("    ╠══════════════════════════╣")
-
-    while (i < 3) {
-        if (i == 0) {
-            std.println("    ║   -Simple syntax         ║");
-        } else {
-            if (i == 1) {
-                std.println("    ║   -User control          ║")
-            } else {
-                std.println("    ║   -Built from scratch    ║")
-            }
-        }
-
-        i = i + 1
-    }
-
-    std.println("    ╚══════════════════════════╝")
-    std.println("")
-    std.println("    Simple by design.")
-    std.println("    Powerful by choice.")
+fn deltaV(isp, wetMass, dryMass) {
+    const g0 = 9.806
+    return isp * g0 * std.ln(wetMass / dryMass)
 }
 
-graphite()
+std.print(deltaV(180, 3000, 2600))
