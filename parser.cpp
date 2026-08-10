@@ -1258,43 +1258,55 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                     instr.body = parse(bodyTokens, path);
                 }
-                if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier && variantToString(input[i + 1].value) == "else")
-                {
-                    while (i + 1 < input.size() && input[i + 1].type == TokenType::NewLine)
-                    {
-                        i++;
-                    }
-                    if (i + 2 < input.size() && input[i + 2].type == TokenType::LCurl)
-                    {
-                        curlyDepth++;
-                        i++;
+                 while (i + 1 < input.size() &&
+       input[i + 1].type == TokenType::NewLine)
+{
+    i++;
+}
 
-                        std::vector<Token> elsebodyTokens;
+if (i + 1 < input.size() &&
+    input[i + 1].type == TokenType::Identifier &&
+    variantToString(input[i + 1].value) == "else")
+{
+    i++; // move to else
 
-                        while (i + 1 < input.size() && curlyDepth != 0)
-                        {
-                            i++;
+    while (i + 1 < input.size() &&
+           input[i + 1].type == TokenType::NewLine)
+    {
+        i++;
+    }
 
-                            if (input[i].type == TokenType::LCurl)
-                            {
-                                curlyDepth++;
-                            }
-                            else if (input[i].type == TokenType::RCurl)
-                            {
-                                curlyDepth--;
-                                if (curlyDepth == 0)
-                                    break;
-                            }
+    if (i + 1 < input.size() &&
+        input[i + 1].type == TokenType::LCurl)
+    {
+        curlyDepth = 1;
+        i++;
 
-                            if (curlyDepth != 0)
-                            {
-                                elsebodyTokens.push_back(input[i]);
-                            }
-                        }
+        std::vector<Token> elsebodyTokens;
 
-                        instr.elseBody = parse(elsebodyTokens, path);
-                    }
-                }
+        while (i + 1 < input.size() && curlyDepth != 0)
+        {
+            i++;
+
+            if (input[i].type == TokenType::LCurl)
+            {
+                curlyDepth++;
+            }
+            else if (input[i].type == TokenType::RCurl)
+            {
+                curlyDepth--;
+
+                if (curlyDepth == 0)
+                    break;
+            }
+
+            if (curlyDepth != 0)
+                elsebodyTokens.push_back(input[i]);
+        }
+
+        instr.elseBody = parse(elsebodyTokens, path);
+    }
+}
                 instructions.push_back(std::move(instr));
             }
             else if (value == "strict")
@@ -1393,7 +1405,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 {
                     canContinue = false;
                 }
-                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon))
+                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile))
                 {
                     instr.expression.push_back(input[i + 3]);
                     i++;
@@ -1406,8 +1418,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 i++;
 
-                while (input[i].type != TokenType::Semicolon &&
-                       input[i].type != TokenType::NewLine)
+                while (input[i].type != TokenType::Semicolon && input[i].type != TokenType::NewLine && input[i + 3].type != TokenType::EndOfFile)
                 {
                     instr.expression.push_back(input[i]);
                     i++;
@@ -1440,7 +1451,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 {
                     canContinue = false;
                 }
-                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon))
+                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile))
                 {
                     instr.expression.push_back(input[i + 3]);
                     i++;
@@ -1454,9 +1465,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 int j = i + 2;
 
-                while (j < input.size() &&
-                       input[j].type != TokenType::NewLine &&
-                       input[j].type != TokenType::Semicolon)
+                while (j < input.size() && input[j].type != TokenType::NewLine && input[j].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile)
                 {
                     instr.expression.push_back(input[j]);
                     j++;
@@ -1496,9 +1505,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     int a = j + 2;
 
                     // Read assignment expression
-                    while (a < input.size() &&
-                           input[a].type != TokenType::NewLine &&
-                           input[a].type != TokenType::Semicolon)
+                    while (a < input.size() && input[a].type != TokenType::NewLine && input[a].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile)
                     {
                         instr.expression.push_back(input[a]);
                         a++;
