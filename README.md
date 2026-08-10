@@ -5,7 +5,7 @@
 
 ## Graphite
 
-A small showcase of Graphite's syntax and features:
+A small demo code:
 
 ```graphite
 use "stdlib"
@@ -15,17 +15,17 @@ fn graphite() {
 
     std.println("")
     std.println("    ╔══════════════════════════╗")
-    std.println("    ║                          ║")
+    std.println("    ║        <GRAPHITE>        ║")
     std.println("    ╠══════════════════════════╣")
 
     while (i < 3) {
         if (i == 0) {
-            std.println("    ║   - Simple syntax        ║")
+            std.println("    ║   -Simple syntax         ║")
         } else {
             if (i == 1) {
-                std.println("    ║   - User control         ║")
+                std.println("    ║   -User control          ║")
             } else {
-                std.println("    ║   - Built from scratch   ║")
+                std.println("    ║   -Built from scratch    ║")
             }
         }
 
@@ -253,7 +253,7 @@ The keyword equivalents behave exactly the same as their operator counterparts.
 
 ## A Basic Delta-V Calculator
 
-Graphite can also be used for small scientific and engineering programs:
+Graphite can also be used for math projects:
 
 ```graphite
 use "stdlib"
@@ -276,3 +276,5 @@ Graphite is still under development.
 The core language is functional, but some features—particularly arrays—are still being fixed and optimized.
 
 More examples can be found in the `Examples` folder.
+
+Also make sure to check out the documentation for more info!
