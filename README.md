@@ -240,12 +240,12 @@ if (foo() isType std.type.string()) {
 
 Some operators have keyword equivalents:
 
-| Operator | Keyword  |   |      |
-| -------- | -------- | - | ---- |
-| `==`     | `is`     |   |      |
-| `&&`     | `and`    |   |      |
-| `        |          | ` | `or` |
-| `===`    | `isType` |   |      |
+| Operator | Keyword  | 
+| -------- | -------- | 
+| `==`     | `is`     | 
+| `&&`     | `and`    |  
+| `||`     |  `or`    | 
+| `===`    | `isType` |  
 
 The keyword equivalents behave exactly the same as their operator counterparts.
 
