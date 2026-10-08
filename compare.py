@@ -1,6 +1,5 @@
 import time
 
-# Start the timer
 start_time = time.perf_counter()
 
 def fib(n):
