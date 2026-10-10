@@ -227,7 +227,50 @@ std::vector<Token> lex(std::string_view input)
 
             while (i + k < input.size() && input[i + k] != '"')
             {
-                buffer.push_back(input[i + k]);
+                char currentChar = input[i + k];
+
+                if (currentChar == '\\')
+                {
+                    if (i + k + 1 >= input.size())
+                    {
+                        throw std::runtime_error("Error: Incomplete escape sequence.");
+                    }
+
+                    char escape = input[i + k + 1];
+
+                    switch (escape)
+                    {
+                    case 'n':
+                        buffer.push_back('\n');
+                        break;
+
+                    case 't':
+                        buffer.push_back('\t');
+                        break;
+
+                    case 'r':
+                        buffer.push_back('\r');
+                        break;
+
+                    case '\\':
+                        buffer.push_back('\\');
+                        break;
+
+                    case '"':
+                        buffer.push_back('"');
+                        break;
+                    case '\'':
+                        buffer.push_back('\'');
+                        break;
+                    default:
+                        throw std::runtime_error("Error: Unknown escape sequence.");
+                    }
+
+                    k += 2;
+                    continue;
+                }
+
+                buffer.push_back(currentChar);
                 ++k;
             }
 
@@ -237,7 +280,8 @@ std::vector<Token> lex(std::string_view input)
             }
 
             token.type = TokenType::String;
-            token.value = buffer;
+            token.value = std::move(buffer);
+
             tokens.emplace_back(std::move(token));
 
             i += k;

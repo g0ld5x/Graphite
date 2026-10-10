@@ -1,5 +1,4 @@
 import time
-
 start_time = time.perf_counter()
 
 def fib(n):

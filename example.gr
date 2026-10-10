@@ -1,8 +1,9 @@
 use "stdlib"
-
-fn deltaV(isp, wetMass, dryMass) {
-    const g0 = 9.806
-    return isp * g0 * std.ln(wetMass / dryMass)
+var i = 0;
+fn berkesikis(){
+    i = i+1
+    std.print(i+"\n")
 }
 
-std.print(deltaV(180, 3000, 2600))
+berkesikis()
+berkesikis()
