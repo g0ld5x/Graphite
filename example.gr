@@ -1,9 +1,2 @@
 use "stdlib"
-var i = 0;
-fn berkesikis(){
-    i = i+1
-    std.print(i+"\n")
-}
-
-berkesikis()
-berkesikis()
+std.print("Hello World!")
