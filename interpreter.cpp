@@ -294,7 +294,9 @@ std::vector<Token> resolveFile(const std::string &input)
         std::vector<std::string> includedInExport;
         for (const auto &entry : fs::directory_iterator(input))
         {
-            if (getFileName(entry.path()).ends_with(".grh"))
+            if (getFileName(entry.path()).compare(
+    getFileName(entry.path()).size() - 4, 4, ".grh"
+) == 0)
             {
                 //.grh is the extension for header files btw.
                 std::ifstream inputFile(entry.path());
