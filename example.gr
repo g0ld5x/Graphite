@@ -1,12 +1,5 @@
-fn fib(int n)
-{
-    if(n <= 1)
-    {
-        return n;
-    }
+use {"stdlib"}
 
-    return fib(n - 1) + fib(n - 2);
-}
+var x = ["hi"]
 
-
-Terminal.IO.println( fib(25) );
+append(x,)

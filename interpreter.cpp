@@ -685,17 +685,16 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
             }
 else if (path == "append") {
-    // 1. Evaluate fonksiyonu variant'ın bir kopyasını döner (shared_ptr kopyalanır, vektör DEĞİL)
     Value target = Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable);
     
-    // 2. Eklenecek elemanı hesapla
+
     Value element = Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable);
 
-    // 3. Variant'ın içindeki shared_ptr'ı (ArrayPtr) güvenle çekin
+
     if (std::holds_alternative<ArrayPtr>(target)) {
         ArrayPtr arr_ptr = std::get<ArrayPtr>(target);
         if (arr_ptr) {
-            // shared_ptr sayesinde RAM'deki asıl vektör kopyalanmadan DOĞRUDAN güncellenir!
+
             arr_ptr->values.push_back(element);
         }
     } else {
