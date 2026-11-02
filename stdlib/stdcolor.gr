@@ -1,0 +1,25 @@
+space std{
+    fn Reset(){
+        return "\033[0m"
+    }
+    space ForeColor{
+        fn Red(){
+            return "\033[31m"
+        }
+        fn Blue(){
+            return "\033[34m"
+        }
+        fn Green(){
+            return "\033[32m"
+        }
+        fn Yellow(){
+            return "\033[33m"
+        }
+        fn Magenta(){
+            return "\033[35m"
+        }
+        fn Cyan(){
+            return "\033[36m"
+        }
+    }
+}

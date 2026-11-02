@@ -16,7 +16,7 @@
 // here we goo
 
 
-
+std::string arrayToString(const std::shared_ptr<ArrayValue> &array);
 std::string joinpath(
     const std::vector<std::string> &elements,
     const std::string &delimiter)
@@ -1484,7 +1484,6 @@ if (i + 1 < input.size() &&
 
                 int j = i + 2;
 
-                
                 while (j < input.size() &&
                        input[j].type != TokenType::RBrac)
                 {
@@ -1495,28 +1494,37 @@ if (i + 1 < input.size() &&
                 if (j >= input.size())
                     throw std::runtime_error("Missing closing ']'");
 
-                
-                i = j;
-
-                
+                // 1. Eşittir (=) kontrolünü j indisine (kapanış parantezine) göre yapıyoruz
                 if (j + 1 < input.size() &&
                     input[j + 1].type == TokenType::Equals)
                 {
-                    int a = j + 2;
+                    // Atama ifadesi eşittirden sonra başlar (j + 2)
+                    int a = j + 2; 
 
-                    // Read assignment expression
-                    while (a < input.size() && input[a].type != TokenType::NewLine && input[a].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile)
+                    // DOĞRU DÖNGÜ: input[i + 3] yerine input[a] kontrol ediliyor!
+                    while (a < input.size() && 
+                           input[a].type != TokenType::NewLine && 
+                           input[a].type != TokenType::Semicolon && 
+                           input[a].type != TokenType::EndOfFile)
                     {
                         instr.expression.push_back(input[a]);
                         a++;
                     }
 
-                    i = a;
+                    // Ana döngünün indisini (i) ifadenin bittiği yere (a) eşitliyoruz
+                    i = a; 
 
                     instructions.push_back(std::move(instr));
                     continue;
                 }
+                else
+                {
+                    // Eğer eşittir (=) yoksa, bu düz bir indis erişimidir (Örn: x[i])
+                    // Ana döngünün (i) kapanış parantezini (j) geçmesini sağlıyoruz
+                    i = j + 1; 
+                }
             }
+
             else if (
                 (i + 1 < input.size() &&
                  (input[i + 1].type == TokenType::LParen ||

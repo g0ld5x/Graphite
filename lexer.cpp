@@ -240,6 +240,31 @@ std::vector<Token> lex(std::string_view input)
 
                     switch (escape)
                     {
+                    case '0':
+                        if (i + k + 3 < input.size() && input[i + k + 2] == '3' && input[i + k + 3] == '3')
+                        {
+                            buffer.push_back('\033');
+                            k += 4; 
+                        }
+                        else
+                        {
+                            buffer.push_back('\0');
+                            k += 2;
+                        }
+                        continue;
+
+                    case 'x':
+
+                        if (i + k + 3 < input.size() && input[i + k + 2] == '1' && (input[i + k + 3] == 'b' || input[i + k + 3] == 'B'))
+                        {
+                            buffer.push_back('\x1b');
+                            k += 4;
+                        }
+                        else
+                        {
+                            throw std::runtime_error("Error: Invalid hex escape sequence.");
+                        }
+                        continue;
                     case 'n':
                         buffer.push_back('\n');
                         break;

@@ -1,6 +1,6 @@
 export
 {
-    "stdcast.gr"
+    "stdcolor.gr"
     "stdio.gr"
     "stdmath.gr"
     "stdtypes.gr"

@@ -19,6 +19,69 @@
 #include <vector>
 #include <stdexcept>
 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+
+std::string value_to_string(const Value& val);
+
+std::string value_to_string(const Value& val) {
+    return std::visit(overloaded {
+        [](std::monostate) -> std::string {
+            return "null"; 
+        },
+        [](int arg) -> std::string {
+            return std::to_string(arg);
+        },
+        [](double arg) -> std::string {
+
+            std::ostringstream ss;
+            ss << arg;
+            return ss.str();
+        },
+        [](const std::string& arg) -> std::string {
+
+            return arg; 
+        },
+        [](bool arg) -> std::string {
+            return arg ? "true" : "false";
+        },
+        [](const ArrayPtr& arg) -> std::string {
+            if (!arg) return "[]"; 
+            
+            std::string result = "[";
+            const auto& vec = arg->values; 
+            
+            for (size_t i = 0; i < vec.size(); ++i) {
+
+                result += value_to_string(vec[i]); 
+                if (i + 1 < vec.size()) {
+                    result += ", ";
+                }
+            }
+            result += "]";
+            return result;
+        }
+    }, val);
+}
+
+std::vector<Value>& variant_to_array(Value& val) {
+
+    if (!std::holds_alternative<ArrayPtr>(val)) {
+        throw std::runtime_error("Error: Value is not an Array type.");
+    }
+
+
+    ArrayPtr& arr_ptr = std::get<ArrayPtr>(val);
+
+
+    if (!arr_ptr) {
+        throw std::runtime_error("Error: Array pointer is null.");
+    }
+
+
+    return arr_ptr->values;
+}
 #ifdef _WIN32
 
 #include <windows.h>
@@ -621,6 +684,24 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     target.vartype = VariableTypes::Double;
                 }
             }
+else if (path == "append") {
+    // 1. Evaluate fonksiyonu variant'ın bir kopyasını döner (shared_ptr kopyalanır, vektör DEĞİL)
+    Value target = Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable);
+    
+    // 2. Eklenecek elemanı hesapla
+    Value element = Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable);
+
+    // 3. Variant'ın içindeki shared_ptr'ı (ArrayPtr) güvenle çekin
+    if (std::holds_alternative<ArrayPtr>(target)) {
+        ArrayPtr arr_ptr = std::get<ArrayPtr>(target);
+        if (arr_ptr) {
+            // shared_ptr sayesinde RAM'deki asıl vektör kopyalanmadan DOĞRUDAN güncellenir!
+            arr_ptr->values.push_back(element);
+        }
+    } else {
+        throw std::runtime_error("Error: Target is not an array.");
+    }
+}
             else if (path == "__native.getOsType")
             {
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
@@ -630,7 +711,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             {
                 for (size_t k = 0; k < instr.arguments.size(); k++)
                 {
-                    std::cout << variantToString2(Evaluate(makeTokenRange(instr.arguments[k]), scope, GlobalFunctionTable));
+                    std::cout << value_to_string(Evaluate(makeTokenRange(instr.arguments[k]), scope, GlobalFunctionTable));
                 }
             }
             else if (path == "os")

@@ -8,77 +8,91 @@
 #include "interpreter.h"
 #include <sstream>
 #include <fstream>
-int main(int argc, char* argv[])
+#include <sys/resource.h>
+
+void printMemoryUsage()
+{
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) == 0)
+    {
+
+        std::cout << "Peak RAM usage: " << usage.ru_maxrss << " KB";
+    }
+}
+int main(int argc, char *argv[])
 {
     std::vector<std::string> path;
     ScopeStack scope;
     FunctionTable ftable;
     initInterpreter(scope);
-    if(argc == 1){ //repl mode
-    std::cout << "Graphite version-0.1 \n";
-    bool debugMode = false;
-    while (true)
-    {
-        char* input = readline("graphite-<< ");
-
-        if (!input)
-            break;
-
-        if (*input)
-            add_history(input);
-
-        if (strcmp(input, "--debug") == 0)
+    if (argc == 1)
+    { // repl mode
+        std::cout << "Graphite version-0.1 \n";
+        bool debugMode = false;
+        while (true)
         {
-            debugMode = !debugMode;
-            std::cout << "Debug mode: " 
-                      << (debugMode ? "ON" : "OFF") 
-                      << "\n";
-            continue;
-        }else if(strcmp(input,"--quit") == 0){
-            break;
+            char *input = readline("graphite-<< ");
+
+            if (!input)
+                break;
+
+            if (*input)
+                add_history(input);
+
+            if (strcmp(input, "--debug") == 0)
+            {
+                debugMode = !debugMode;
+                std::cout << "Debug mode: "
+                          << (debugMode ? "ON" : "OFF")
+                          << "\n";
+                continue;
+            }
+            else if (strcmp(input, "--quit") == 0)
+            {
+                break;
+            }
+
+            auto start = std::chrono::high_resolution_clock::now();
+
+            interpret(parse(lex(input), path), scope, ftable);
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "\n";
+            if (debugMode)
+            {
+                std::cout << "\n Execution Time: "
+                          << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+                          << " nanoseconds\n";
+            }
+
+            free(input);
         }
-
-        auto start = std::chrono::high_resolution_clock::now();
-
-        interpret(parse(lex(input),path),scope,ftable);
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "\n";
-        if(debugMode)
-        {
-            std::cout << "\n Execution Time: "
-                      << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-                      << " nanoseconds\n";
-        }
-
-        free(input);
-    }
     }
     bool debugMode = false;
     for (int i = 1; i < argc; i++)
     {
         std::string currentArg = argv[i];
-        
-        
-            std::ifstream File(currentArg);
 
-            if (!File)
-            {
-                std::cerr << "Could not open file: " << currentArg << "\n";
-                continue;
-            }
-            
-            std::stringstream buffer;
-            buffer << File.rdbuf();
+        std::ifstream File(currentArg);
 
-            std::string source = buffer.str();
-            auto start = std::chrono::high_resolution_clock::now();
-            interpret(parse(lex(source),path),scope,ftable);
-            auto end = std::chrono::high_resolution_clock::now();
+        if (!File)
+        {
+            std::cerr << "Could not open file: " << currentArg << "\n";
+            continue;
+        }
 
-                            std::cout << "\n Execution Time: "
-                      << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-                      << " nanoseconds\n";
-            
+        std::stringstream buffer;
+        buffer << File.rdbuf();
+
+        std::string source = buffer.str();
+        auto start = std::chrono::high_resolution_clock::now();
+        interpret(parse(lex(source), path), scope, ftable);
+        auto end = std::chrono::high_resolution_clock::now();
         
+
+        std::cout << "\n Execution Time: "
+                  << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+                  << " nanoseconds\n";
+
+        printMemoryUsage();
     }
 }
