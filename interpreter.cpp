@@ -19,66 +19,77 @@
 #include <vector>
 #include <stdexcept>
 
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template <class... Ts>
+struct overloaded : Ts...
+{
+    using Ts::operator()...;
+};
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
+std::string value_to_string(const Value &val);
 
-std::string value_to_string(const Value& val);
+std::string value_to_string(const Value &val)
+{
+    return std::visit(overloaded{[](std::monostate) -> std::string
+                                 {
+                                     return "null";
+                                 },
+                                 [](int arg) -> std::string
+                                 {
+                                     return std::to_string(arg);
+                                 },
+                                 [](double arg) -> std::string
+                                 {
+                                     std::ostringstream ss;
+                                     ss << arg;
+                                     return ss.str();
+                                 },
+                                 [](const std::string &arg) -> std::string
+                                 {
+                                     return arg;
+                                 },
+                                 [](bool arg) -> std::string
+                                 {
+                                     return arg ? "true" : "false";
+                                 },
+                                 [](const ArrayPtr &arg) -> std::string
+                                 {
+                                     if (!arg)
+                                         return "[]";
 
-std::string value_to_string(const Value& val) {
-    return std::visit(overloaded {
-        [](std::monostate) -> std::string {
-            return "null"; 
-        },
-        [](int arg) -> std::string {
-            return std::to_string(arg);
-        },
-        [](double arg) -> std::string {
+                                     std::string result = "[";
+                                     const auto &vec = arg->values;
 
-            std::ostringstream ss;
-            ss << arg;
-            return ss.str();
-        },
-        [](const std::string& arg) -> std::string {
+                                     for (size_t i = 0; i < vec.size(); ++i)
+                                     {
 
-            return arg; 
-        },
-        [](bool arg) -> std::string {
-            return arg ? "true" : "false";
-        },
-        [](const ArrayPtr& arg) -> std::string {
-            if (!arg) return "[]"; 
-            
-            std::string result = "[";
-            const auto& vec = arg->values; 
-            
-            for (size_t i = 0; i < vec.size(); ++i) {
-
-                result += value_to_string(vec[i]); 
-                if (i + 1 < vec.size()) {
-                    result += ", ";
-                }
-            }
-            result += "]";
-            return result;
-        }
-    }, val);
+                                         result += value_to_string(vec[i]);
+                                         if (i + 1 < vec.size())
+                                         {
+                                             result += ", ";
+                                         }
+                                     }
+                                     result += "]";
+                                     return result;
+                                 }},
+                      val);
 }
 
-std::vector<Value>& variant_to_array(Value& val) {
+std::vector<Value> &variant_to_array(Value &val)
+{
 
-    if (!std::holds_alternative<ArrayPtr>(val)) {
+    if (!std::holds_alternative<ArrayPtr>(val))
+    {
         throw std::runtime_error("Error: Value is not an Array type.");
     }
 
+    ArrayPtr &arr_ptr = std::get<ArrayPtr>(val);
 
-    ArrayPtr& arr_ptr = std::get<ArrayPtr>(val);
-
-
-    if (!arr_ptr) {
+    if (!arr_ptr)
+    {
         throw std::runtime_error("Error: Array pointer is null.");
     }
-
 
     return arr_ptr->values;
 }
@@ -132,6 +143,8 @@ void runCommand(
 
 TokenRange makeTokenRange(const std::vector<Token> &tokens)
 {
+
+
     if (tokens.empty())
         throw std::runtime_error("Cannot create TokenRange from empty token vector");
 
@@ -294,9 +307,7 @@ std::vector<Token> resolveFile(const std::string &input)
         std::vector<std::string> includedInExport;
         for (const auto &entry : fs::directory_iterator(input))
         {
-            if (getFileName(entry.path()).compare(
-    getFileName(entry.path()).size() - 4, 4, ".grh"
-) == 0)
+            if (getFileName(entry.path()).compare(getFileName(entry.path()).size() - 4, 4, ".grh") == 0)
             {
                 //.grh is the extension for header files btw.
                 std::ifstream inputFile(entry.path());
@@ -340,6 +351,36 @@ std::vector<Token> resolveFile(const std::string &input)
     }
 
     return tokens;
+}
+
+
+int charCode(const std::string& str) {
+    if (str.empty()) return -1;
+    return static_cast<unsigned char>(str[0]);
+}
+
+std::string charFromCode(int code) {
+    if (code < 0 || code > 127)
+        return "";
+
+    return std::string(1, static_cast<char>(code));
+}
+
+bool doesVariableExist(const std::string& name, ScopeStack& scopes) {
+    std::cerr << "Name: " << name << "\n";
+    std::cerr << "Checking variable: [" << name << "]\n";
+
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+        std::cerr << "Scope contains " << it->size() << " variables\n";
+
+        if (it->find(name) != it->end()) {
+            std::cerr << "FOUND\n";
+            return true;
+        }
+    }
+
+    std::cerr << "NOT FOUND\n";
+    return false;
 }
 
 bool variantToBool2(const Value &value)
@@ -479,14 +520,13 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         else if (instr.type == Instruction::Types::Use)
         {
 
-                // normal route
-                for (size_t i = 0; i < instr.importPath.size(); i++)
-                {
-                    std::vector<std::string> a;
-                    ScopeStack importScope;
-                    interpret(parse(resolveFile(instr.importPath[i]), a), importScope, GlobalFunctionTable);
-                }
-
+            // normal route
+            for (size_t i = 0; i < instr.importPath.size(); i++)
+            {
+                std::vector<std::string> a;
+                ScopeStack importScope;
+                interpret(parse(resolveFile(instr.importPath[i]), a), importScope, GlobalFunctionTable);
+            }
         }
         else if (instr.type == Instruction::Types::Space)
         {
@@ -653,7 +693,6 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         {
 
             std::string path = join(instr.path, ".");
-
             if (path == "Int")
             { // for casting Int(varname);
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
@@ -686,27 +725,59 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     target.vartype = VariableTypes::Double;
                 }
             }
-else if (path == "append") {
-    Value target = Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable);
-    
+            else if (path == "append")
+            {
+                Value target = Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable);
 
-    Value element = Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable);
+                Value element = Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable);
 
+                if (std::holds_alternative<ArrayPtr>(target))
+                {
+                    ArrayPtr arr_ptr = std::get<ArrayPtr>(target);
+                    if (arr_ptr)
+                    {
 
-    if (std::holds_alternative<ArrayPtr>(target)) {
-        ArrayPtr arr_ptr = std::get<ArrayPtr>(target);
-        if (arr_ptr) {
+                        arr_ptr->values.push_back(element);
+                    }
+                }
+                else
+                {
+                    throw std::runtime_error("Error: Target is not an array.");
+                }
+            }
+else if (path == "__varExists") {
+    VariableData& target = getVariable2(
+        variantToString2(instr.arguments[1][0].value),
+        scope
+    );
 
-            arr_ptr->values.push_back(element);
-        }
-    } else {
-        throw std::runtime_error("Error: Target is not an array.");
-    }
+    VariableData& argument = getVariable2(
+        variantToString2(instr.arguments[0][0].value),
+        scope
+    );
+
+    target.value = doesVariableExist(
+        variantToString2(argument.value),
+        scope
+    );
 }
             else if (path == "__native.getOsType")
             {
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                 target.value = osType();
+            }
+            else if (path == "__exec") {
+
+
+                auto tokenized =  lex( variantToString2( Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable)));
+                std::vector<std::string> evalPath;
+                auto parsed = parse(tokenized, evalPath);
+                ExecutionResult exec = interpret(
+                    parsed, scope, GlobalFunctionTable
+                );
+                    if (exec.didReturn) {
+                    return exec;
+                }
             }
             else if (path == "Terminal.IO.print")
             {
@@ -740,38 +811,44 @@ else if (path == "append") {
 
                 runCommand(command, args);
             }
-else if (path == "size")
-{
-    VariableData &source =
-        getVariable2(
-            variantToString2(instr.arguments[0][0].value),
-            scope
-        );
+            else if (path == "size")
+            {
+                VariableData &source =
+                    getVariable2(
+                        variantToString2(instr.arguments[0][0].value),
+                        scope);
 
-    VariableData &target =
-        getVariable2(
-            variantToString2(instr.arguments[1][0].value),
-            scope
-        );
+                VariableData &target =
+                    getVariable2(
+                        variantToString2(instr.arguments[1][0].value),
+                        scope);
 
-    Value &value = source.value;
+                Value &value = source.value;
 
-    if (std::holds_alternative<std::shared_ptr<ArrayValue>>(value))
-    {
-        auto array =
-            std::get<std::shared_ptr<ArrayValue>>(value);
+                if (std::holds_alternative<std::shared_ptr<ArrayValue>>(value))
+                {
+                    auto array =
+                        std::get<std::shared_ptr<ArrayValue>>(value);
 
-        target.value =
-            static_cast<int>(array->values.size());
-    }
-    else if (std::holds_alternative<std::string>(value))
-    {
-        target.value =
-            static_cast<int>(
-                std::get<std::string>(value).size()
-            );
-    }
-}
+                    target.value =
+                        static_cast<int>(array->values.size());
+                }
+                else if (std::holds_alternative<std::string>(value))
+                {
+                    target.value =
+                        static_cast<int>(
+                            std::get<std::string>(value).size());
+                }
+            }
+
+            else if (path == "chrti"){
+                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                target.value = charCode( variantToString2( Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
+            }
+            else if (path == "itchr"){
+                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                target.value = charFromCode( variantToInt2( Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
+            }
             else if (path == "Terminal.IO.println")
             {
                 for (size_t k = 0; k < instr.arguments.size(); k++)

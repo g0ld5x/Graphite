@@ -18,4 +18,11 @@ space std{
             return [0]
         }
     }
+
+        fn doesVarExist(tempr){
+            var y = 0;
+            __varExists(tempr,y)
+            free(tempr)
+            return y;
+        }
 }

@@ -1,0 +1,12 @@
+use {"stdlib/stdstring.gr","stdlib/stdio.gr","stdlib/stdtypes.gr"}
+
+space std{
+    fn createDictionary(name){
+        __exec("strict global var d" + std.encode(name) + " = []")
+    }
+
+    fn dictionaryExists(name){
+        return std.doesVarExist("d" + std.encode(name))
+    }
+    
+}

@@ -7,4 +7,5 @@ export
     "stdcast.gr"
     "stdarray.gr"
     "stdstring.gr"
+    "stddictionary.gr"
 }

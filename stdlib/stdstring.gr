@@ -1,28 +1,68 @@
 space std{
-    fn size(string str){
-        var val = 0;
-        size(str, val);
-        return val;
+
+
+    fn charToCode(y){
+        var temp = 0
+        chrti(temp,y)
+        return temp
     }
 
-fn split(input , delimiter){
-    var result = []; 
-    var currentWord = "";
-    var i = 0;
-
-    while(i < std.size(input)){
-        if(input[i] == delimiter){
-            append(result, currentWord); 
-            currentWord = ""; 
-        }
-        else {
-            currentWord = currentWord + input[i];
-        }
-        i = i + 1;
+    fn codeToChar(y){
+        var tempp = 0
+        itchr(tempp,y)
+        return tempp
     }
-    append(result, currentWord); 
 
-    return result;
-}
+    fn hash(str) {
+        var h = 0
+        var i = 0
+
+        while( i < std.size(str) ){
+            h = h * 31 + std.charToCode(str[i]) % 1000000007
+            i = i + 1
+        }
+
+        return h
+    }
+
+        fn djbhash(str) {
+        var h = 5381
+        var i = 0
+
+        while (i < std.size(str)) {
+            h = h * 33 + std.charToCode(str[i])
+            i = i + 1
+        }
+
+        return h
+    }
+
+
+    fn encode(str) {
+        var result = 0
+        var multiplier = 1
+        var i = 0
+
+        while (i < std.size(str)) {
+            result = result + (std.charToCode(str[i]) + 1) * multiplier
+            multiplier = multiplier * 129
+            i = i + 1
+        }
+
+        return result
+    }
+
+    fn decode(encoded) {
+        var result = ""
+        var n = encoded
+
+        while (n > 0) {
+            var digit = n % 129
+            result = result + std.codeToChar(digit - 1)
+            n = (n - digit) / 129
+        }
+
+        return result
+    }
 
 }

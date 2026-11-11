@@ -1,5 +1,6 @@
-use {"stdlib"}
+use "stdlib"
 
-var x = ["hi"]
 
-append(x,)
+
+std.createDictionary("hi")
+std.print(std.dictionaryExists(""))

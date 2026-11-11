@@ -1494,14 +1494,13 @@ if (i + 1 < input.size() &&
                 if (j >= input.size())
                     throw std::runtime_error("Missing closing ']'");
 
-                // 1. Eşittir (=) kontrolünü j indisine (kapanış parantezine) göre yapıyoruz
+
                 if (j + 1 < input.size() &&
                     input[j + 1].type == TokenType::Equals)
                 {
-                    // Atama ifadesi eşittirden sonra başlar (j + 2)
+
                     int a = j + 2; 
 
-                    // DOĞRU DÖNGÜ: input[i + 3] yerine input[a] kontrol ediliyor!
                     while (a < input.size() && 
                            input[a].type != TokenType::NewLine && 
                            input[a].type != TokenType::Semicolon && 
@@ -1511,7 +1510,7 @@ if (i + 1 < input.size() &&
                         a++;
                     }
 
-                    // Ana döngünün indisini (i) ifadenin bittiği yere (a) eşitliyoruz
+
                     i = a; 
 
                     instructions.push_back(std::move(instr));
@@ -1519,8 +1518,7 @@ if (i + 1 < input.size() &&
                 }
                 else
                 {
-                    // Eğer eşittir (=) yoksa, bu düz bir indis erişimidir (Örn: x[i])
-                    // Ana döngünün (i) kapanış parantezini (j) geçmesini sağlıyoruz
+
                     i = j + 1; 
                 }
             }

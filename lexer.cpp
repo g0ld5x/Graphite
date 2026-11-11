@@ -268,7 +268,6 @@ std::vector<Token> lex(std::string_view input)
                     case 'n':
                         buffer.push_back('\n');
                         break;
-
                     case 't':
                         buffer.push_back('\t');
                         break;
