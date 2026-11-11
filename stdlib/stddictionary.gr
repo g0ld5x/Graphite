@@ -1,12 +1,26 @@
 use {"stdlib/stdstring.gr","stdlib/stdio.gr","stdlib/stdtypes.gr"}
 
 space std{
+    fn nameDecrypt(name){
+        return "graphite_dictionary_name_" + name
+    }
     fn createDictionary(name){
-        __exec("strict global var d" + std.encode(name) + " = []")
+        __exec("strict global var " + std.nameDecrypt(name) + " = []")
     }
 
     fn dictionaryExists(name){
-        return std.doesVarExist("d" + std.encode(name))
+        return std.doesVarExist(std.nameDecrypt(name))
+    }
+
+    fn dictionarySet(name,key,linker){
+        if(std.dictionaryExists(name) == true){
+           appendByName(std.nameDecrypt(name),key)
+           appendByName(std.nameDecrypt(name),linker) 
+        }
+    }
+
+    fn printDictionary(name){
+        __exec("std.print(" + std.nameDecrypt(name) + ")")
     }
     
 }

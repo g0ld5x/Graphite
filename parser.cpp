@@ -766,10 +766,14 @@ if (open != -1)
         {
             return variantToString(lhs) +
                    variantToString(rhs);
+        } else if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs)){
+            return variantToInt(lhs) + variantToInt(rhs);
         }
 
         return variantToDouble(lhs) +
                variantToDouble(rhs);
+
+            
 
     case TokenType::Remainder:
         return std::fmod(
@@ -777,8 +781,12 @@ if (open != -1)
             variantToDouble(rhs));
 
     case TokenType::Minus:
+        if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs)){
+            return variantToInt(lhs) + variantToInt(rhs);
+        }else{
         return variantToDouble(lhs) -
                variantToDouble(rhs);
+        }
 
     case TokenType::Multiply:
 
@@ -799,7 +807,7 @@ if (open != -1)
             return buffer;
         }
 
-        if (std::holds_alternative<int>(lhs) &&
+        else if (std::holds_alternative<int>(lhs) &&
             std::holds_alternative<std::string>(rhs))
         {
             const std::string& str =
@@ -815,9 +823,13 @@ if (open != -1)
 
             return buffer;
         }
+        else if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs)){
+            return variantToInt(lhs) * variantToInt(rhs);
+        }else{
 
         return variantToDouble(lhs) *
                variantToDouble(rhs);
+        }
 
     case TokenType::Division:
         return variantToDouble(lhs) /

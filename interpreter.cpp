@@ -367,19 +367,19 @@ std::string charFromCode(int code) {
 }
 
 bool doesVariableExist(const std::string& name, ScopeStack& scopes) {
-    std::cerr << "Name: " << name << "\n";
-    std::cerr << "Checking variable: [" << name << "]\n";
+    //std::cerr << "Name: " << name << "\n";
+    //std::cerr << "Checking variable: [" << name << "]\n";
 
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        std::cerr << "Scope contains " << it->size() << " variables\n";
+        //std::cerr << "Scope contains " << it->size() << " variables\n";
 
         if (it->find(name) != it->end()) {
-            std::cerr << "FOUND\n";
+            //std::cerr << "FOUND\n";
             return true;
         }
     }
 
-    std::cerr << "NOT FOUND\n";
+    //std::cerr << "NOT FOUND\n";
     return false;
 }
 
@@ -745,6 +745,43 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     throw std::runtime_error("Error: Target is not an array.");
                 }
             }
+
+else if (path == "appendByName")
+{
+    Value nameValue = Evaluate(
+        makeTokenRange(instr.arguments[0]),
+        scope,
+        GlobalFunctionTable
+    );
+
+    std::string name = variantToString2(nameValue);
+
+    VariableData& target = getVariable2(name, scope);
+
+    Value element = Evaluate(
+        makeTokenRange(instr.arguments[1]),
+        scope,
+        GlobalFunctionTable
+    );
+
+    if (std::holds_alternative<ArrayPtr>(target.value))
+    {
+        ArrayPtr arr_ptr = std::get<ArrayPtr>(target.value);
+
+        if (arr_ptr)
+        {
+            arr_ptr->values.push_back(element);
+        }
+        else
+        {
+            throw std::runtime_error("Error: Target array is null.");
+        }
+    }
+    else
+    {
+        throw std::runtime_error("Error: Target is not an array.");
+    }
+}
 else if (path == "__varExists") {
     VariableData& target = getVariable2(
         variantToString2(instr.arguments[1][0].value),

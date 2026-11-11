@@ -53,7 +53,7 @@ space std{
     }
 
     fn decode(encoded) {
-        var result = ""
+        var result = 0
         var n = encoded
 
         while (n > 0) {

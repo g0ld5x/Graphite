@@ -1,5 +1,5 @@
 space std{
-    fn Reset(){
+    fn ResetColor(){
         return "\033[0m"
     }
     space ForeColor{

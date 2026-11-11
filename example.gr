@@ -1,6 +1,19 @@
 use "stdlib"
 
 
+std.createDictionary("badge")
 
-std.createDictionary("hi")
-std.print(std.dictionaryExists(""))
+if (std.dictionaryExists("badge")) 
+{
+
+    std.print("Dictionary named 'badge' exists.\n")
+
+    std.dictionarySet("badge","Name:","John")
+
+    std.dictionarySet("badge","ID:",3214)
+
+}
+
+std.printDictionary("badge")
+
+//Dictionaries!!
