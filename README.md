@@ -10,35 +10,21 @@ A small demo code:
 ```graphite
 use "stdlib"
 
-fn graphite() {
-    var i = 0
 
-    std.println("")
-    std.println("    ╔══════════════════════════╗")
-    std.println("    ║        <GRAPHITE>        ║")
-    std.println("    ╠══════════════════════════╣")
+std.createDictionary("badge")
 
-    while (i < 3) {
-        if (i == 0) {
-            std.println("    ║   -Simple syntax         ║")
-        } else {
-            if (i == 1) {
-                std.println("    ║   -User control          ║")
-            } else {
-                std.println("    ║   -Built from scratch    ║")
-            }
-        }
+if (std.dictionaryExists("badge")) 
+{
 
-        i = i + 1
-    }
+    std.print("Dictionary named 'badge' exists.\n")
 
-    std.println("    ╚══════════════════════════╝")
-    std.println("")
-    std.println("    Simple by design.")
-    std.println("    Powerful by choice.")
+    std.dictionarySet("badge","Name:","John")
+
+    std.dictionarySet("badge","ID:",3214)
+
 }
 
-graphite()
+std.printDictionary("badge")
 ```
 
 ---
