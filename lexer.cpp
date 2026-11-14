@@ -103,6 +103,12 @@ std::vector<Token> lex(std::string_view input)
             token.type = TokenType::LCurl;
             tokens.emplace_back(std::move(token));
         }
+        else if (current == ':')
+        {
+            Token token;
+            token.type = TokenType::ForDivider;
+            tokens.emplace_back(std::move(token));
+        }
         else if (current == '=')
         {
             Token token;
@@ -198,6 +204,10 @@ std::vector<Token> lex(std::string_view input)
             if (buffer == "and")
             {
                 token.type = TokenType::AndAnd;
+            }
+            if (buffer == "in")
+            {
+                token.type = TokenType::ForDivider;
             }
             else if (buffer == "is")
             {

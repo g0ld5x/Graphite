@@ -54,9 +54,10 @@ enum class TokenType
     Equals = '=',     //=
     EndOfFile = 'E',  // self-explanatory
     NewLine = '|',
-    TypeEquality,
+    TypeEquality, // === or 'isType'
     True,
-    False
+    False,
+    ForDivider // : or 'in'
 };
 
 struct Token

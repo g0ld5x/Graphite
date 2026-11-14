@@ -15,7 +15,6 @@
 #include <climits>
 // here we goo
 
-
 std::string arrayToString(const std::shared_ptr<ArrayValue> &array);
 std::string joinpath(
     const std::vector<std::string> &elements,
@@ -120,8 +119,7 @@ VariableTypes getType(const Value &value)
                               return VariableTypes::Null;
 
                           else if constexpr (std::is_same_v<T, ArrayPtr>)
-                              return VariableTypes::Array;
-                      },
+                              return VariableTypes::Array; },
                       value);
 }
 
@@ -190,8 +188,7 @@ std::string variantToString(const Value &a)
                               std::ostringstream oss;
                               oss << arg;
                               return oss.str();
-                          }
-                      },
+                          } },
                       a);
 }
 
@@ -223,11 +220,10 @@ bool isUnary(const std::vector<Token> &tokens, int index)
 }
 
 bool isInVariables(
-    const Token& tok,
-    const VariableTable& variables)
+    const Token &tok,
+    const VariableTable &variables)
 {
-    return variables.find(variantToString(tok.value))
-           != variables.end();
+    return variables.find(variantToString(tok.value)) != variables.end();
 }
 
 VariableData *getVariable(std::string name, ScopeStack &scopes)
@@ -277,10 +273,10 @@ bool variantToBool(const Value &value)
 }
 
 Value ExecuteFunction(
-    const std::string& name,
-    const std::vector<TokenRange>& arguments,
-    FunctionTable& ftable,
-    ScopeStack& scopeStack)
+    const std::string &name,
+    const std::vector<TokenRange> &arguments,
+    FunctionTable &ftable,
+    ScopeStack &scopeStack)
 {
     auto it = ftable.find(name);
 
@@ -291,7 +287,7 @@ Value ExecuteFunction(
         return Value{};
     }
 
-    const GFunction& targetFunc = it->second;
+    const GFunction &targetFunc = it->second;
 
     if (arguments.size() != targetFunc.locals.size())
     {
@@ -314,15 +310,14 @@ Value ExecuteFunction(
         var.value = Evaluate(
             arguments[k],
             scopeStack,
-            ftable
-        );
+            ftable);
 
         bufferTable[var.name] = std::move(var);
     }
 
     scopeStack.push_back(std::move(bufferTable));
 
-    const ExecutionResult& result =
+    const ExecutionResult &result =
         interpret(targetFunc.body, scopeStack, ftable);
 
     scopeStack.pop_back();
@@ -353,13 +348,12 @@ std::string arrayToString(const std::shared_ptr<ArrayValue> &array)
 }
 
 Value Evaluate(
-    const TokenRange& tokens,
-    ScopeStack& scope,
-    FunctionTable& functionTable)
+    const TokenRange &tokens,
+    ScopeStack &scope,
+    FunctionTable &functionTable)
 {
     if (tokens.size() == 0)
         throw std::runtime_error("Cannot evaluate empty expression");
-
 
     if (tokens[0].type == TokenType::Identifier)
     {
@@ -415,7 +409,7 @@ Value Evaluate(
                      i < closing;
                      ++i)
                 {
-                    const Token& currentToken = tokens[i];
+                    const Token &currentToken = tokens[i];
 
                     if (currentToken.type == TokenType::LParen)
                     {
@@ -444,7 +438,7 @@ Value Evaluate(
                     }
                 }
 
-                //last argument
+                // last argument
                 if (argStart < closing)
                 {
                     bufferArg.push_back(
@@ -452,8 +446,6 @@ Value Evaluate(
                             argStart,
                             closing - 1));
                 }
-
-
 
                 std::string funcPath;
 
@@ -481,7 +473,7 @@ Value Evaluate(
     {
         if (tokens[0].type == TokenType::Identifier)
         {
-            VariableData* variable = getVariable(
+            VariableData *variable = getVariable(
                 variantToString(tokens[0].value),
                 scope);
 
@@ -497,8 +489,6 @@ Value Evaluate(
 
         return tokens[0].value;
     }
-
-
 
     TokenRange range = tokens;
 
@@ -532,27 +522,46 @@ Value Evaluate(
             range.size() - 2);
     }
 
-
-    if (range[0].type == TokenType::LBrac)
+    if (range.size() > 0 &&
+        range[0].type == TokenType::LBrac)
     {
         int depth = 1;
-        size_t closing = 0;
+        size_t closing = range.size();
+        bool foundClosing = false;
 
-        while (++closing < range.size())
+        // Find the matching closing bracket.
+        for (size_t i = 1; i < range.size(); ++i)
         {
-            if (range[closing].type == TokenType::LBrac)
+            if (range[i].type == TokenType::LBrac)
                 depth++;
 
-            else if (range[closing].type == TokenType::RBrac)
+            else if (range[i].type == TokenType::RBrac)
             {
                 depth--;
 
                 if (depth == 0)
+                {
+                    closing = i;
+                    foundClosing = true;
                     break;
+                }
             }
         }
 
-        if (closing == range.size() - 1)
+        if (!foundClosing)
+            throw std::runtime_error("Missing closing ']'");
+
+        // Ignore trailing newlines after the array.
+        size_t last = range.size();
+
+        while (last > closing + 1 &&
+               range[last - 1].type == TokenType::NewLine)
+        {
+            last--;
+        }
+
+        // The array must occupy the complete expression.
+        if (last == closing + 1)
         {
             auto array = std::make_shared<ArrayValue>();
 
@@ -562,12 +571,14 @@ Value Evaluate(
             for (size_t i = start; i < closing; ++i)
             {
                 if (range[i].type == TokenType::LParen ||
-                    range[i].type == TokenType::LBrac)
+                    range[i].type == TokenType::LBrac ||
+                    range[i].type == TokenType::LCurl)
                 {
                     elementDepth++;
                 }
                 else if (range[i].type == TokenType::RParen ||
-                         range[i].type == TokenType::RBrac)
+                         range[i].type == TokenType::RBrac ||
+                         range[i].type == TokenType::RCurl)
                 {
                     elementDepth--;
                 }
@@ -575,30 +586,68 @@ Value Evaluate(
                 if (range[i].type == TokenType::Comma &&
                     elementDepth == 0)
                 {
-                    array->values.push_back(
-                        Evaluate(
-                            range.subrange(start, i - 1),
-                            scope,
-                            functionTable));
+                    // Element range uses an exclusive end here.
+                    size_t elementStart = start;
+                    size_t elementEnd = i;
+
+                    // Remove leading newlines.
+                    while (elementStart < elementEnd &&
+                           range[elementStart].type == TokenType::NewLine)
+                    {
+                        elementStart++;
+                    }
+
+                    // Remove trailing newlines.
+                    while (elementEnd > elementStart &&
+                           range[elementEnd - 1].type == TokenType::NewLine)
+                    {
+                        elementEnd--;
+                    }
+
+                    if (elementStart < elementEnd)
+                    {
+                        array->values.push_back(
+                            Evaluate(
+                                range.subrange(
+                                    elementStart,
+                                    elementEnd - 1),
+                                scope,
+                                functionTable));
+                    }
 
                     start = i + 1;
                 }
             }
 
-            //last element
-            if (start < closing)
+            // Handle the final element.
+            size_t elementStart = start;
+            size_t elementEnd = closing;
+
+            while (elementStart < elementEnd &&
+                   range[elementStart].type == TokenType::NewLine)
+            {
+                elementStart++;
+            }
+
+            while (elementEnd > elementStart &&
+                   range[elementEnd - 1].type == TokenType::NewLine)
+            {
+                elementEnd--;
+            }
+
+            if (elementStart < elementEnd)
             {
                 array->values.push_back(
                     Evaluate(
-                        range.subrange(start, closing - 1),
+                        range.subrange(
+                            elementStart,
+                            elementEnd - 1),
                         scope,
                         functionTable));
             }
-
             return array;
         }
     }
-
 
     if (isUnary(*range.tokens, range.start))
     {
@@ -665,8 +714,6 @@ Value Evaluate(
         }
     }
 
-
-
     if (range[range.size() - 1].type == TokenType::RBrac)
     {
         int depth = 0;
@@ -691,60 +738,57 @@ Value Evaluate(
             }
         }
 
-if (open != -1)
-{
-    Value containerValue = Evaluate(
-        range.subrange(0, open - 1),
-        scope,
-        functionTable);
-
-    Value indexValue = Evaluate(
-        range.subrange(open + 1, range.size() - 2),
-        scope,
-        functionTable);
-
-    int index = variantToInt(indexValue);
-
-    if (std::holds_alternative<std::shared_ptr<ArrayValue>>(containerValue))
-    {
-        auto array =
-            std::get<std::shared_ptr<ArrayValue>>(containerValue);
-
-        if (index < 0 ||
-            index >= static_cast<int>(array->values.size()))
+        if (open > 0)
         {
+            Value containerValue = Evaluate(
+                range.subrange(0, open - 1),
+                scope,
+                functionTable);
+
+            Value indexValue = Evaluate(
+                range.subrange(open + 1, range.size() - 2),
+                scope,
+                functionTable);
+
+            int index = variantToInt(indexValue);
+
+            if (std::holds_alternative<std::shared_ptr<ArrayValue>>(containerValue))
+            {
+                auto array =
+                    std::get<std::shared_ptr<ArrayValue>>(containerValue);
+
+                if (index < 0 ||
+                    index >= static_cast<int>(array->values.size()))
+                {
+                    throw std::runtime_error(
+                        "Array index out of bounds");
+                }
+
+                return array->values[index];
+            }
+
+            if (std::holds_alternative<std::string>(containerValue))
+            {
+                const std::string &str =
+                    std::get<std::string>(containerValue);
+
+                if (index < 0 ||
+                    index >= static_cast<int>(str.size()))
+                {
+                    throw std::runtime_error(
+                        "String index out of bounds");
+                }
+
+                return std::string(1, str[index]);
+            }
+
             throw std::runtime_error(
-                "Array index out of bounds");
+                "Cannot index non-array or string value");
         }
-
-        return array->values[index];
     }
-
-    if (std::holds_alternative<std::string>(containerValue))
-    {
-        const std::string &str =
-            std::get<std::string>(containerValue);
-
-        if (index < 0 ||
-            index >= static_cast<int>(str.size()))
-        {
-            throw std::runtime_error(
-                "String index out of bounds");
-        }
-
-        return std::string(1, str[index]);
-    }
-
-    throw std::runtime_error(
-        "Cannot index non-array or string value");
-}
-    }
-
-
 
     if (split == -1)
         throw std::runtime_error("No operator found.");
-
 
     Value lhs = Evaluate(
         range.subrange(0, split - 1),
@@ -756,8 +800,6 @@ if (open != -1)
         scope,
         functionTable);
 
-
-
     switch (range[split].type)
     {
     case TokenType::Plus:
@@ -766,14 +808,14 @@ if (open != -1)
         {
             return variantToString(lhs) +
                    variantToString(rhs);
-        } else if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs)){
+        }
+        else if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs))
+        {
             return variantToInt(lhs) + variantToInt(rhs);
         }
 
         return variantToDouble(lhs) +
                variantToDouble(rhs);
-
-            
 
     case TokenType::Remainder:
         return std::fmod(
@@ -781,11 +823,14 @@ if (open != -1)
             variantToDouble(rhs));
 
     case TokenType::Minus:
-        if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs)){
+        if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs))
+        {
             return variantToInt(lhs) + variantToInt(rhs);
-        }else{
-        return variantToDouble(lhs) -
-               variantToDouble(rhs);
+        }
+        else
+        {
+            return variantToDouble(lhs) -
+                   variantToDouble(rhs);
         }
 
     case TokenType::Multiply:
@@ -793,7 +838,7 @@ if (open != -1)
         if (std::holds_alternative<std::string>(lhs) &&
             std::holds_alternative<int>(rhs))
         {
-            const std::string& str =
+            const std::string &str =
                 std::get<std::string>(lhs);
 
             int count = std::get<int>(rhs);
@@ -808,9 +853,9 @@ if (open != -1)
         }
 
         else if (std::holds_alternative<int>(lhs) &&
-            std::holds_alternative<std::string>(rhs))
+                 std::holds_alternative<std::string>(rhs))
         {
-            const std::string& str =
+            const std::string &str =
                 std::get<std::string>(rhs);
 
             int count = std::get<int>(lhs);
@@ -823,12 +868,15 @@ if (open != -1)
 
             return buffer;
         }
-        else if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs)){
+        else if (std::holds_alternative<int>(lhs) && std::holds_alternative<int>(rhs))
+        {
             return variantToInt(lhs) * variantToInt(rhs);
-        }else{
+        }
+        else
+        {
 
-        return variantToDouble(lhs) *
-               variantToDouble(rhs);
+            return variantToDouble(lhs) *
+                   variantToDouble(rhs);
         }
 
     case TokenType::Division:
@@ -1126,14 +1174,91 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 continue;
             }
 
-            else if(value == "break"){
+            else if (value == "break")
+            {
                 instr.type = Instruction::Types::Break;
                 instructions.push_back(std::move(instr));
             }
-            else if(value == "continue"){
+            else if (value == "continue")
+            {
                 instr.type = Instruction::Types::Continue;
                 instructions.push_back(std::move(instr));
             }
+            else if (value == "for")
+            { // for(fruit in fruits) here fruits is the iterateable so it will be stored as a vector of tokens, because it can be a function returning an array or things like that. The object can be stored as a string.
+                instr.type = Instruction::Types::For;
+                int curlyDepth = 0;
+                // parse the for object
+                ++i;
+                ++i;
+                if (input[i + 1].type == TokenType::ForDivider)
+                {
+                    instr.object = variantToString(input[i].value);
+                    i++;
+                }
+                else
+                {
+                    std::cerr << "Wrong for loop syntax";
+                }
+                int paranDepth = 1;
+                while (i + 1 < input.size() && paranDepth != 0)
+                {
+                    ++i;
+                    if (input[i].type == TokenType::RParen)
+                    {
+                        paranDepth--;
+                    }
+                    else if (input[i].type == TokenType::LParen)
+                    {
+                        paranDepth++;
+                    }
+                    if (paranDepth > 0)
+                    {
+                        instr.iterateable.push_back(input[i]);
+                    }
+                }
+
+                // Ignore newlines between condition and {
+                while (i + 1 < input.size() && input[i + 1].type == TokenType::NewLine)
+                {
+                    i++;
+                }
+
+                // Parse body
+                if (i + 1 < input.size() && input[i + 1].type == TokenType::LCurl)
+                {
+                    curlyDepth++;
+                    i++;
+
+                    std::vector<Token> bodyTokens;
+
+                    while (i + 1 < input.size() && curlyDepth != 0)
+                    {
+                        i++;
+
+                        if (input[i].type == TokenType::LCurl)
+                        {
+                            curlyDepth++;
+                        }
+                        else if (input[i].type == TokenType::RCurl)
+                        {
+                            curlyDepth--;
+
+                            if (curlyDepth == 0)
+                                break;
+                        }
+
+                        if (curlyDepth != 0)
+                        {
+                            bodyTokens.push_back(std::move(input[i]));
+                        }
+                    }
+
+                    instr.body = parse(bodyTokens, path);
+                }
+                instructions.push_back(std::move(instr));
+            }
+
             else if (value == "while")
             {
                 instr.type = Instruction::Types::While;
@@ -1279,55 +1404,55 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                     instr.body = parse(bodyTokens, path);
                 }
-                 while (i + 1 < input.size() &&
-       input[i + 1].type == TokenType::NewLine)
-{
-    i++;
-}
+                while (i + 1 < input.size() &&
+                       input[i + 1].type == TokenType::NewLine)
+                {
+                    i++;
+                }
 
-if (i + 1 < input.size() &&
-    input[i + 1].type == TokenType::Identifier &&
-    variantToString(input[i + 1].value) == "else")
-{
-    i++; // move to else
+                if (i + 1 < input.size() &&
+                    input[i + 1].type == TokenType::Identifier &&
+                    variantToString(input[i + 1].value) == "else")
+                {
+                    i++; // move to else
 
-    while (i + 1 < input.size() &&
-           input[i + 1].type == TokenType::NewLine)
-    {
-        i++;
-    }
+                    while (i + 1 < input.size() &&
+                           input[i + 1].type == TokenType::NewLine)
+                    {
+                        i++;
+                    }
 
-    if (i + 1 < input.size() &&
-        input[i + 1].type == TokenType::LCurl)
-    {
-        curlyDepth = 1;
-        i++;
+                    if (i + 1 < input.size() &&
+                        input[i + 1].type == TokenType::LCurl)
+                    {
+                        curlyDepth = 1;
+                        i++;
 
-        std::vector<Token> elsebodyTokens;
+                        std::vector<Token> elsebodyTokens;
 
-        while (i + 1 < input.size() && curlyDepth != 0)
-        {
-            i++;
+                        while (i + 1 < input.size() && curlyDepth != 0)
+                        {
+                            i++;
 
-            if (input[i].type == TokenType::LCurl)
-            {
-                curlyDepth++;
-            }
-            else if (input[i].type == TokenType::RCurl)
-            {
-                curlyDepth--;
+                            if (input[i].type == TokenType::LCurl)
+                            {
+                                curlyDepth++;
+                            }
+                            else if (input[i].type == TokenType::RCurl)
+                            {
+                                curlyDepth--;
 
-                if (curlyDepth == 0)
-                    break;
-            }
+                                if (curlyDepth == 0)
+                                    break;
+                            }
 
-            if (curlyDepth != 0)
-                elsebodyTokens.push_back(input[i]);
-        }
+                            if (curlyDepth != 0)
+                                elsebodyTokens.push_back(input[i]);
+                        }
 
-        instr.elseBody = parse(elsebodyTokens, path);
-    }
-}
+                        instr.elseBody = parse(elsebodyTokens, path);
+                    }
+                }
                 instructions.push_back(std::move(instr));
             }
             else if (value == "strict")
@@ -1426,9 +1551,36 @@ if (i + 1 < input.size() &&
                 {
                     canContinue = false;
                 }
-                while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile))
+                int expressionDepth = 0;
+
+                while (i + 3 < input.size())
                 {
-                    instr.expression.push_back(input[i + 3]);
+                    const Token &token = input[i + 3];
+
+                    if (token.type == TokenType::EndOfFile)
+                        break;
+
+                    if (expressionDepth == 0 &&
+                        (token.type == TokenType::NewLine ||
+                         token.type == TokenType::Semicolon))
+                    {
+                        break;
+                    }
+
+                    if (token.type == TokenType::LParen ||
+                        token.type == TokenType::LBrac ||
+                        token.type == TokenType::LCurl)
+                    {
+                        expressionDepth++;
+                    }
+                    else if (token.type == TokenType::RParen ||
+                             token.type == TokenType::RBrac ||
+                             token.type == TokenType::RCurl)
+                    {
+                        expressionDepth--;
+                    }
+
+                    instr.expression.push_back(token);
                     i++;
                 }
                 instructions.push_back(std::move(instr));
@@ -1479,20 +1631,46 @@ if (i + 1 < input.size() &&
                 }
                 instructions.push_back(std::move(instr));
             }
-            else if (i + 1 < input.size() && input[i + 1].type == TokenType::Equals)
+
+            else if (i + 1 < input.size() &&
+                     input[i + 1].type == TokenType::Equals)
             {
                 instr.vardata.name = variantToString(input[i].value);
                 instr.type = Instruction::Types::Assign;
 
                 int j = i + 2;
+                int depth = 0;
 
-                while (j < input.size() && input[j].type != TokenType::NewLine && input[j].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile)
+                while (j < input.size())
                 {
+                    auto type = input[j].type;
+
+                    if (type == TokenType::LBrac ||
+                        type == TokenType::LParen ||
+                        type == TokenType::LCurl)
+                    {
+                        depth++;
+                    }
+                    else if (type == TokenType::RBrac ||
+                             type == TokenType::RParen ||
+                             type == TokenType::RCurl)
+                    {
+                        depth--;
+                    }
+
+                    if (depth == 0 &&
+                        (type == TokenType::NewLine ||
+                         type == TokenType::Semicolon ||
+                         type == TokenType::EndOfFile))
+                    {
+                        break;
+                    }
+
                     instr.expression.push_back(input[j]);
                     j++;
                 }
 
-                i = j; // skip the whole expression
+                i = j;
 
                 instructions.push_back(std::move(instr));
                 continue;
@@ -1503,44 +1681,91 @@ if (i + 1 < input.size() &&
                 instr.vardata.name = variantToString(input[i].value);
                 instr.type = Instruction::Types::Assign;
 
-                int j = i + 2;
+                // Collect consecutive indexing operations.
+                std::size_t j = i + 1;
 
                 while (j < input.size() &&
-                       input[j].type != TokenType::RBrac)
+                       input[j].type == TokenType::LBrac)
                 {
-                    instr.indexExpression.push_back(input[j]);
-                    j++;
+                    j++; // Skip '['.
+
+                    int bracketDepth = 1;
+                    std::vector<Token> indexTokens;
+
+                    while (j < input.size() && bracketDepth > 0)
+                    {
+                        if (input[j].type == TokenType::LBrac)
+                        {
+                            bracketDepth++;
+                        }
+                        else if (input[j].type == TokenType::RBrac)
+                        {
+                            bracketDepth--;
+                        }
+
+                        if (bracketDepth > 0 &&
+                            input[j].type != TokenType::NewLine)
+                        {
+                            indexTokens.push_back(input[j]);
+                        }
+
+                        j++;
+                    }
+
+                    if (bracketDepth != 0)
+                        throw std::runtime_error("Missing closing ']'");
+
+                    if (indexTokens.empty())
+                        throw std::runtime_error("Empty index expression");
+
+                    instr.indexExpressions.push_back(
+                        std::move(indexTokens));
                 }
 
-                if (j >= input.size())
-                    throw std::runtime_error("Missing closing ']'");
-
-
-                if (j + 1 < input.size() &&
-                    input[j + 1].type == TokenType::Equals)
+                // j points to the token after the final ']'.
+                if (j < input.size() &&
+                    input[j].type == TokenType::Equals)
                 {
+                    std::size_t a = j + 1;
+                    int depth = 0;
 
-                    int a = j + 2; 
-
-                    while (a < input.size() && 
-                           input[a].type != TokenType::NewLine && 
-                           input[a].type != TokenType::Semicolon && 
-                           input[a].type != TokenType::EndOfFile)
+                    while (a < input.size())
                     {
+                        auto type = input[a].type;
+
+                        if (type == TokenType::LBrac ||
+                            type == TokenType::LParen ||
+                            type == TokenType::LCurl)
+                        {
+                            depth++;
+                        }
+                        else if (type == TokenType::RBrac ||
+                                 type == TokenType::RParen ||
+                                 type == TokenType::RCurl)
+                        {
+                            depth--;
+                        }
+
+                        if (depth == 0 &&
+                            (type == TokenType::NewLine ||
+                             type == TokenType::Semicolon ||
+                             type == TokenType::EndOfFile))
+                        {
+                            break;
+                        }
+
                         instr.expression.push_back(input[a]);
                         a++;
                     }
 
-
-                    i = a; 
+                    i = a;
 
                     instructions.push_back(std::move(instr));
                     continue;
                 }
                 else
                 {
-
-                    i = j + 1; 
+                    i = j;
                 }
             }
 
@@ -1624,7 +1849,6 @@ if (i + 1 < input.size() &&
                             }
                         }
 
-                        
                         if (instr.arguments.size() == 1 && instr.arguments[0].empty())
                         {
                             instr.arguments.clear();

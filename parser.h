@@ -61,6 +61,9 @@ struct TokenRange
 
     size_t size() const
     {
+        if (tokens == nullptr || start > end)
+            return 0;
+
         return end - start + 1;
     }
 
@@ -102,10 +105,10 @@ struct Instruction
     std::vector<Token> expression; //for vars before computing their values at runtime
     std::vector<std::vector<Token>> arguments;
 
-    std::vector<Token> indexExpression; // for this:   a[expression] = 3;
+    std::vector<std::vector<Token>> indexExpressions; // for this:   a[expression] = 3;
     std::vector<Token> condition;
 
-    //for functions,if,else,while
+    //for functions,if,else,while,for
     std::vector<Instruction> body;
     //only for if
     std::vector<Instruction> elseBody;
@@ -113,6 +116,11 @@ struct Instruction
     std::string Funcname;
 
     std::vector<VariableData> locals;
+    
+    //only for For statements
+
+    std::string object;
+    std::vector<Token> iterateable;
 
     bool isStrict;
     bool isVoid;

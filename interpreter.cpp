@@ -228,6 +228,70 @@ std::string osType()
 #endif
 }
 
+std::size_t utf8Length(const std::string &str)
+{
+    std::size_t count = 0;
+
+    for (unsigned char c : str)
+    {
+        if ((c & 0xC0) != 0x80)
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+std::size_t utf8Offset(const std::string &str, std::size_t index)
+{
+    std::size_t current = 0;
+
+    for (std::size_t i = 0; i < str.size(); i++)
+    {
+        unsigned char c = str[i];
+
+        if ((c & 0xC0) != 0x80)
+        {
+            if (current == index)
+                return i;
+
+            current++;
+        }
+    }
+
+    throw std::out_of_range("UTF-8 index out of range");
+}
+
+Value indexVariant(const Value &value, std::size_t index)
+{
+    return std::visit([index](const auto &v) -> Value
+                      {
+        using T = std::decay_t<decltype(v)>;
+
+        if constexpr (std::is_same_v<T, ArrayPtr>) {
+            if (!v) {
+                throw std::runtime_error("Cannot index a null array");
+            }
+
+            return v->values.at(index);
+        }
+        else if constexpr (std::is_same_v<T, std::string>) {
+            std::size_t offset = utf8Offset(v, index);
+            unsigned char c = v[offset];
+
+            std::size_t charLength =
+                (c < 0x80) ? 1 :
+                (c < 0xE0) ? 2 :
+                (c < 0xF0) ? 3 : 4;
+
+            return v.substr(offset, charLength);
+        }
+        else {
+            throw std::runtime_error("Value is not indexable");
+        } }, value);
+}
+
 int variantToInt2(const Value &value)
 {
     if (const auto *p = std::get_if<int>(&value))
@@ -254,6 +318,26 @@ int variantToInt2(const Value &value)
     return 0;
 }
 
+std::size_t variantLength(const Value &value)
+{
+    return std::visit([](const auto &v) -> std::size_t
+                      {
+        using T = std::decay_t<decltype(v)>;
+
+        if constexpr (std::is_same_v<T, std::string>) {
+            return utf8Length(v);
+        }
+        else if constexpr (std::is_same_v<T, ArrayPtr>) {
+            if (!v) {
+                throw std::runtime_error("Cannot get length of a null array");
+            }
+
+            return v->values.size();
+        }
+        else {
+            throw std::runtime_error("Value does not have a length");
+        } }, value);
+}
 std::string getFileName(const std::string &path)
 {
     size_t lastSlash = path.find_last_of("/\\");
@@ -534,10 +618,10 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         }
         else if (instr.type == Instruction::Types::Space)
         {
-        ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
+            ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
 
-        if (result.didReturn || result.didBreak || result.didContinue)
-            return result;
+            if (result.didReturn || result.didBreak || result.didContinue)
+                return result;
         }
         else if (instr.type == Instruction::Types::Return)
         {
@@ -590,7 +674,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
         }
         else if (instr.type == Instruction::Types::Assign)
-        { // for things like var x = 32;
+        {
             VariableData &target = getVariable2(instr.vardata.name, scope);
             if (target.isConst)
             {
@@ -600,26 +684,72 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             {
 
                 Value value = Evaluate(makeTokenRange(instr.expression), scope, GlobalFunctionTable);
+                std::cout << "[DEBUG] Result is array: "
+                          << std::holds_alternative<std::shared_ptr<ArrayValue>>(value)
+                          << "\n";
 
-                if (!instr.indexExpression.empty())
+                std::cout << "[DEBUG] Result is monostate: "
+                          << std::holds_alternative<std::monostate>(value)
+                          << "\n";
+                if (!instr.indexExpressions.empty())
                 {
-                    Value indexValue = Evaluate(makeTokenRange(instr.indexExpression), scope, GlobalFunctionTable);
-
-                    int index = variantToInt2(indexValue);
-
-                    if (std::holds_alternative<std::shared_ptr<ArrayValue>>(target.value))
+                    if (!instr.indexExpressions.empty())
                     {
-                        auto &array =
-                            std::get<std::shared_ptr<ArrayValue>>(target.value);
+                        std::vector<std::size_t> indices;
 
-                        array->values[index] = value;
-                    }
-                    else if (std::holds_alternative<std::string>(target.value))
-                    {
-                        auto &str = std::get<std::string>(target.value);
-                        auto &replacement = std::get<std::string>(value);
+                        // Evaluate each index expression.
+                        for (const auto &indexExpression : instr.indexExpressions)
+                        {
+                            Value indexValue = Evaluate(
+                                makeTokenRange(indexExpression),
+                                scope,
+                                GlobalFunctionTable);
 
-                        str.replace(index, 1, replacement);
+                            int index = variantToInt2(indexValue);
+
+                            if (index < 0)
+                                throw std::runtime_error("Array index cannot be negative");
+
+                            indices.push_back(static_cast<std::size_t>(index));
+                        }
+
+                        // Start at the variable's value.
+                        Value *current = &target.value;
+
+                        // Traverse all arrays except the final one.
+                        for (std::size_t i = 0; i + 1 < indices.size(); ++i)
+                        {
+                            auto *array = std::get_if<std::shared_ptr<ArrayValue>>(current);
+
+                            if (!array || !*array)
+                                throw std::runtime_error("Cannot index a non-array value");
+
+                            current = &(*array)->values.at(indices[i]);
+                        }
+
+                        // Modify the final indexed element.
+                        std::size_t finalIndex = indices.back();
+
+                        if (auto *array = std::get_if<std::shared_ptr<ArrayValue>>(current))
+                        {
+                            if (!*array)
+                                throw std::runtime_error("Cannot index a null array");
+
+                            (*array)->values.at(finalIndex) = value;
+                        }
+                        else if (auto *str = std::get_if<std::string>(current))
+                        {
+                            auto *replacement = std::get_if<std::string>(&value);
+
+                            if (!replacement)
+                                throw std::runtime_error("String index assignment requires a string");
+
+                            str->replace(finalIndex, 1, *replacement);
+                        }
+                        else
+                        {
+                            throw std::runtime_error("Cannot assign to an indexed non-array value");
+                        }
                     }
                 }
                 else
@@ -655,6 +785,41 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             continue;
         }
+        else if (instr.type == Instruction::Types::For)
+        {
+            Value iterateable = Evaluate(makeTokenRange(instr.iterateable), scope, GlobalFunctionTable);
+
+            std::size_t length = variantLength(iterateable);
+
+            if (length == 0)
+            {
+                // skip the lop
+            }
+            else
+            {
+                scope.back()[instr.object] = {instr.object, indexVariant(iterateable, 0), true, true, false, VariableTypes::AllAccept};
+
+                auto &toModify = getVariable2(instr.object, scope);
+
+                for (std::size_t index = 0; index < length; ++index)
+                {
+                    toModify.value = indexVariant(iterateable, index);
+
+                    ExecutionResult result = interpret(
+                        instr.body,
+                        scope,
+                        GlobalFunctionTable);
+
+                    if (result.didReturn)
+                        return result;
+
+                    if (result.didBreak)
+                        break;
+                    if (result.didContinue)
+                        continue;
+                }
+            }
+        }
         else if (instr.type == Instruction::Types::If)
         {
             scope.push_back(VariableTable{});
@@ -667,7 +832,6 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 ExecutionResult result = interpret(
                     instr.body, scope, GlobalFunctionTable);
 
-    
                 if (result.didReturn || result.didBreak || result.didContinue)
                 {
                     scope.pop_back();
@@ -698,9 +862,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 ExecutionResult result = interpret(
                     instr.body,
                     scope,
-                    GlobalFunctionTable
-                );
-
+                    GlobalFunctionTable);
 
                 if (result.didReturn)
                     return result;
@@ -710,7 +872,6 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 if (result.didContinue)
                     continue;
             }
-
         }
         else if (instr.type == Instruction::Types::Break)
         {
@@ -896,20 +1057,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
                 Value &value = source.value;
 
-                if (std::holds_alternative<std::shared_ptr<ArrayValue>>(value))
-                {
-                    auto array =
-                        std::get<std::shared_ptr<ArrayValue>>(value);
-
-                    target.value =
-                        static_cast<int>(array->values.size());
-                }
-                else if (std::holds_alternative<std::string>(value))
-                {
-                    target.value =
-                        static_cast<int>(
-                            std::get<std::string>(value).size());
-                }
+                target.value = static_cast<int>(variantLength(value));
             }
 
             else if (path == "chrti")
