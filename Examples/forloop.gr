@@ -1,0 +1,18 @@
+use "stdlib"
+
+var names = []
+var toAppend = 0
+while(true){
+    toAppend = std.prompt("Enter Name (Leave empty and enter to exit): ")
+
+    if(toAppend != ""){
+        append(names,toAppend)
+    }else{
+        break;
+    }
+
+}
+
+for(name : names){
+    std.println(name)
+}

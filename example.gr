@@ -1,7 +1,0 @@
-use "stdlib"
-
-var fruits = ["apple","banana","orange","pear"]
-
-for (fruit in fruits){
-    std.println(fruit)
-}
