@@ -1,11 +1,57 @@
 use "stdlib"
 
-var numbers = [
-    10,
-    20,
-    30
-]
+std.print("=== NUMBER GUESSING GAME === \n \n 
 
-for(number in numbers){
-    std.println(number)
+Player 1: Set a secret number between 1-100. \n \n
+
+-the screen will be cleared after a number is entered-
+");
+
+var gizliSayi = 0;
+
+while(true){
+    gizliSayi = std.int( std.prompt("Enter your secret number: ") )
+    
+    if(gizliSayi < 100 and gizliSayi > 0){
+        break;
+    }else{
+        std.println("Choose a number in between 0 and a 100")
+    }
+}
+
+std.clear();
+
+std.print("=== NUMBER GUESSING GAME === \n 
+
+Player 2: A number has been set between 1-100
+\n
+
+You have 7 chances. Good luck!
+
+\n \n
+");
+
+var hak = 7;
+var kazandi = false;
+
+while(hak > 0 && kazandi is false){
+    std.println("Remaining chances: "+ hak);
+
+    var tahmin = std.int( std.prompt("Enter your guess: ") );
+
+    if(tahmin == gizliSayi){
+        std.print(std.ForeColor.Green() +  "\n \n Congrats! You predicted right " +  gizliSayi + " was the secret number! ")
+        kazandi = true;
+    }else{
+      std.println(std.ForeColor.Red() + "Wrong!" + std.ResetColor());
+      hak = hak-1;
+    }
+}
+
+if(kazandi is true){
+  std.println("You Won!" + std.ResetColor())
+}
+
+if(kazandi is false and hak is 0){
+  std.println("std.ForeColor.Red() + \n You lost! The secret number was: " + gizliSayi + "..." + std.ResetColor())
 }

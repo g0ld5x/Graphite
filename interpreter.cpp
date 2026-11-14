@@ -684,13 +684,6 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             {
 
                 Value value = Evaluate(makeTokenRange(instr.expression), scope, GlobalFunctionTable);
-                std::cout << "[DEBUG] Result is array: "
-                          << std::holds_alternative<std::shared_ptr<ArrayValue>>(value)
-                          << "\n";
-
-                std::cout << "[DEBUG] Result is monostate: "
-                          << std::holds_alternative<std::monostate>(value)
-                          << "\n";
                 if (!instr.indexExpressions.empty())
                 {
                     if (!instr.indexExpressions.empty())

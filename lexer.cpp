@@ -205,7 +205,7 @@ std::vector<Token> lex(std::string_view input)
             {
                 token.type = TokenType::AndAnd;
             }
-            if (buffer == "in")
+            else if (buffer == "in")
             {
                 token.type = TokenType::ForDivider;
             }
