@@ -1,3 +1,5 @@
+use "stdlib"
+
 fn fib(int n)
 {
     if(n <= 1)
@@ -9,4 +11,4 @@ fn fib(int n)
 }
 
 
-Terminal.IO.println( fib(25) );
+std.print( fib(25) );

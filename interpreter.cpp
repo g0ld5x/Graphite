@@ -144,7 +144,6 @@ void runCommand(
 TokenRange makeTokenRange(const std::vector<Token> &tokens)
 {
 
-
     if (tokens.empty())
         throw std::runtime_error("Cannot create TokenRange from empty token vector");
 
@@ -353,33 +352,38 @@ std::vector<Token> resolveFile(const std::string &input)
     return tokens;
 }
 
-
-int charCode(const std::string& str) {
-    if (str.empty()) return -1;
+int charCode(const std::string &str)
+{
+    if (str.empty())
+        return -1;
     return static_cast<unsigned char>(str[0]);
 }
 
-std::string charFromCode(int code) {
+std::string charFromCode(int code)
+{
     if (code < 0 || code > 127)
         return "";
 
     return std::string(1, static_cast<char>(code));
 }
 
-bool doesVariableExist(const std::string& name, ScopeStack& scopes) {
-    //std::cerr << "Name: " << name << "\n";
-    //std::cerr << "Checking variable: [" << name << "]\n";
+bool doesVariableExist(const std::string &name, ScopeStack &scopes)
+{
+    // std::cerr << "Name: " << name << "\n";
+    // std::cerr << "Checking variable: [" << name << "]\n";
 
-    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        //std::cerr << "Scope contains " << it->size() << " variables\n";
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+    {
+        // std::cerr << "Scope contains " << it->size() << " variables\n";
 
-        if (it->find(name) != it->end()) {
-            //std::cerr << "FOUND\n";
+        if (it->find(name) != it->end())
+        {
+            // std::cerr << "FOUND\n";
             return true;
         }
     }
 
-    //std::cerr << "NOT FOUND\n";
+    // std::cerr << "NOT FOUND\n";
     return false;
 }
 
@@ -530,7 +534,10 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         }
         else if (instr.type == Instruction::Types::Space)
         {
-            interpret(instr.body, scope, GlobalFunctionTable);
+        ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
+
+        if (result.didReturn || result.didBreak || result.didContinue)
+            return result;
         }
         else if (instr.type == Instruction::Types::Return)
         {
@@ -652,11 +659,16 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
         {
             scope.push_back(VariableTable{});
 
-            if (variantToBool2(Evaluate(makeTokenRange(instr.condition), scope, GlobalFunctionTable)))
+            if (variantToBool2(Evaluate(
+                    makeTokenRange(instr.condition),
+                    scope,
+                    GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
+                ExecutionResult result = interpret(
+                    instr.body, scope, GlobalFunctionTable);
 
-                if (result.didReturn == true)
+    
+                if (result.didReturn || result.didBreak || result.didContinue)
                 {
                     scope.pop_back();
                     return result;
@@ -664,9 +676,10 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (!instr.elseBody.empty())
             {
-                ExecutionResult result = interpret(instr.elseBody, scope, GlobalFunctionTable);
+                ExecutionResult result = interpret(
+                    instr.elseBody, scope, GlobalFunctionTable);
 
-                if (result.didReturn)
+                if (result.didReturn || result.didBreak || result.didContinue)
                 {
                     scope.pop_back();
                     return result;
@@ -682,13 +695,38 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 scope,
                 GlobalFunctionTable)))
             {
-                ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
+                ExecutionResult result = interpret(
+                    instr.body,
+                    scope,
+                    GlobalFunctionTable
+                );
+
 
                 if (result.didReturn)
                     return result;
+
+                if (result.didBreak)
+                    break;
+                if (result.didContinue)
+                    continue;
             }
+
+        }
+        else if (instr.type == Instruction::Types::Break)
+        {
+
+            ExecutionResult exec;
+            exec.didBreak = true;
+            return exec;
         }
 
+        else if (instr.type == Instruction::Types::Continue)
+        {
+
+            ExecutionResult exec;
+            exec.didContinue = true;
+            return exec;
+        }
         else if (instr.type == Instruction::Types::FunctionCall)
         {
 
@@ -746,73 +784,69 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
             }
 
-else if (path == "appendByName")
-{
-    Value nameValue = Evaluate(
-        makeTokenRange(instr.arguments[0]),
-        scope,
-        GlobalFunctionTable
-    );
+            else if (path == "appendByName")
+            {
+                Value nameValue = Evaluate(
+                    makeTokenRange(instr.arguments[0]),
+                    scope,
+                    GlobalFunctionTable);
 
-    std::string name = variantToString2(nameValue);
+                std::string name = variantToString2(nameValue);
 
-    VariableData& target = getVariable2(name, scope);
+                VariableData &target = getVariable2(name, scope);
 
-    Value element = Evaluate(
-        makeTokenRange(instr.arguments[1]),
-        scope,
-        GlobalFunctionTable
-    );
+                Value element = Evaluate(
+                    makeTokenRange(instr.arguments[1]),
+                    scope,
+                    GlobalFunctionTable);
 
-    if (std::holds_alternative<ArrayPtr>(target.value))
-    {
-        ArrayPtr arr_ptr = std::get<ArrayPtr>(target.value);
+                if (std::holds_alternative<ArrayPtr>(target.value))
+                {
+                    ArrayPtr arr_ptr = std::get<ArrayPtr>(target.value);
 
-        if (arr_ptr)
-        {
-            arr_ptr->values.push_back(element);
-        }
-        else
-        {
-            throw std::runtime_error("Error: Target array is null.");
-        }
-    }
-    else
-    {
-        throw std::runtime_error("Error: Target is not an array.");
-    }
-}
-else if (path == "__varExists") {
-    VariableData& target = getVariable2(
-        variantToString2(instr.arguments[1][0].value),
-        scope
-    );
+                    if (arr_ptr)
+                    {
+                        arr_ptr->values.push_back(element);
+                    }
+                    else
+                    {
+                        throw std::runtime_error("Error: Target array is null.");
+                    }
+                }
+                else
+                {
+                    throw std::runtime_error("Error: Target is not an array.");
+                }
+            }
+            else if (path == "__varExists")
+            {
+                VariableData &target = getVariable2(
+                    variantToString2(instr.arguments[1][0].value),
+                    scope);
 
-    VariableData& argument = getVariable2(
-        variantToString2(instr.arguments[0][0].value),
-        scope
-    );
+                VariableData &argument = getVariable2(
+                    variantToString2(instr.arguments[0][0].value),
+                    scope);
 
-    target.value = doesVariableExist(
-        variantToString2(argument.value),
-        scope
-    );
-}
+                target.value = doesVariableExist(
+                    variantToString2(argument.value),
+                    scope);
+            }
             else if (path == "__native.getOsType")
             {
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
                 target.value = osType();
             }
-            else if (path == "__exec") {
+            else if (path == "__exec")
+            {
 
-
-                auto tokenized =  lex( variantToString2( Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable)));
+                auto tokenized = lex(variantToString2(Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable)));
                 std::vector<std::string> evalPath;
                 auto parsed = parse(tokenized, evalPath);
                 ExecutionResult exec = interpret(
-                    parsed, scope, GlobalFunctionTable
-                );
-                    if (exec.didReturn) {
+                    parsed, scope, GlobalFunctionTable);
+                if (exec.didReturn)
+                {
                     return exec;
                 }
             }
@@ -878,13 +912,15 @@ else if (path == "__varExists") {
                 }
             }
 
-            else if (path == "chrti"){
+            else if (path == "chrti")
+            {
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
-                target.value = charCode( variantToString2( Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
+                target.value = charCode(variantToString2(Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
             }
-            else if (path == "itchr"){
+            else if (path == "itchr")
+            {
                 VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
-                target.value = charFromCode( variantToInt2( Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
+                target.value = charFromCode(variantToInt2(Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
             }
             else if (path == "Terminal.IO.println")
             {
@@ -1009,5 +1045,6 @@ else if (path == "__varExists") {
             }
         }
     }
+
     return ExecutionResult{};
 }

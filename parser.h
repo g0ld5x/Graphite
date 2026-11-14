@@ -88,7 +88,9 @@ struct Instruction
         Command,
         Return,
         Space,
-        Use
+        Use,
+        Break,
+        Continue
     };
     Types type;
     std::vector<std::string> path;

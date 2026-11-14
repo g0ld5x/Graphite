@@ -1125,6 +1125,15 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 continue;
             }
+
+            else if(value == "break"){
+                instr.type = Instruction::Types::Break;
+                instructions.push_back(std::move(instr));
+            }
+            else if(value == "continue"){
+                instr.type = Instruction::Types::Continue;
+                instructions.push_back(std::move(instr));
+            }
             else if (value == "while")
             {
                 instr.type = Instruction::Types::While;

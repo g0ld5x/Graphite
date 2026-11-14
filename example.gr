@@ -1,19 +1,19 @@
 use "stdlib"
 
+var i = 0
 
-std.createDictionary("badge")
+while (i < 3) {
+    i = i + 1
 
-if (std.dictionaryExists("badge")) 
-{
+    var j = 0
 
-    std.print("Dictionary named 'badge' exists.\n")
+    while (j < 3) {
+        j = j + 1
 
-    std.dictionarySet("badge","Name:","John")
+        if (j == 2) {
+            continue
+        }
 
-    std.dictionarySet("badge","ID:",3214)
-
+        std.println(i + " " + j)
+    }
 }
-
-std.printDictionary("badge")
-
-//Dictionaries!!

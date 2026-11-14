@@ -10,7 +10,9 @@
 #include "lexer.h"
 
  struct ExecutionResult{
-    bool didReturn;
+    bool didReturn = false;
+    bool didBreak = false;
+    bool didContinue = false;
     Value returnValue;
 };
 
