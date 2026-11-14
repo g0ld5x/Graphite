@@ -65,4 +65,23 @@ space std{
         return result
     }
 
+    fn split(text,delimiter){
+        var buffer1 = ""
+        var buffer2 = ""
+        var switch = false
+        for(character : text){
+            if(switch == false){
+                buffer1 = buffer1+character
+                if(character == delimiter){
+                    switch = true
+                }
+            }else{
+                buffer2 = buffer2 + character
+            }
+        }
+
+        var result = [buffer1,buffer2]
+        return result
+    }
+
 }
