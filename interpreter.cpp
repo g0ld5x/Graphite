@@ -595,87 +595,90 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
     for (size_t i = 0; i < input.size(); i++)
     {
         Instruction instr = input[i];
-        if (instr.type == Instruction::Types::FunctionDeclare)
+        if (std::holds_alternative<FunctionDeclareInstruction>(instr.data))
         {
-            GFunction &func = GlobalFunctionTable[instr.Funcname];
-
-            func.body = instr.body;
-            func.isStrict = instr.isStrict;
-            func.name = instr.Funcname;
-            func.locals = instr.locals;
+            auto& function = std::get<FunctionDeclareInstruction>(instr.data);
+            GFunction &func = GlobalFunctionTable[function.Funcname];
+            
+            func.body = function.body;
+            func.isStrict = function.isStrict;
+            func.name = function.Funcname;
+            func.locals = function.locals;
             func.isVoid = true;
         }
-        else if (instr.type == Instruction::Types::Use)
+        else if (std::holds_alternative<UseInstruction>(instr.data))
         {
 
-            // normal route
-            for (size_t i = 0; i < instr.importPath.size(); i++)
+           auto& use = std::get<UseInstruction>(instr.data);
+            for (size_t i = 0; i < use.importPath.size(); i++)
             {
                 std::vector<std::string> a;
                 ScopeStack importScope;
-                interpret(parse(resolveFile(instr.importPath[i]), a), importScope, GlobalFunctionTable);
+                interpret(parse(resolveFile(use.importPath[i]), a), importScope, GlobalFunctionTable);
             }
         }
-        else if (instr.type == Instruction::Types::Space)
+        else if (std::holds_alternative<SpaceInstruction>(instr.data))
         {
-            ExecutionResult result = interpret(instr.body, scope, GlobalFunctionTable);
+            auto& space = std::get<SpaceInstruction>(instr.data);
+            ExecutionResult result = interpret(space.body, scope, GlobalFunctionTable);
 
             if (result.didReturn || result.didBreak || result.didContinue)
                 return result;
         }
-        else if (instr.type == Instruction::Types::Return)
+        else if (std::holds_alternative<ReturnInstruction>(instr.data))
         {
-
+            auto& retrn = std::get<ReturnInstruction>(instr.data);
             ExecutionResult exec;
             exec.didReturn = true;
             exec.returnValue = Evaluate(
-                makeTokenRange(instr.expression),
+                makeTokenRange(retrn.expression),
                 scope,
                 GlobalFunctionTable);
 
             return exec;
         }
-        else if (instr.type == Instruction::Types::Declare)
+        else if (std::holds_alternative<DeclareInstruction>(instr.data))
         {
-
+            auto& declare = std::get<DeclareInstruction>(instr.data);
             Value value = Evaluate(
-                makeTokenRange(instr.expression),
+                makeTokenRange(declare.expression),
                 scope,
                 GlobalFunctionTable);
 
             if (std::holds_alternative<int>(value))
             {
-                instr.vardata.vartype = VariableTypes::Int;
+                declare.vardata.vartype = VariableTypes::Int;
             }
             else if (std::holds_alternative<std::string>(value))
             {
-                instr.vardata.vartype = VariableTypes::String;
+                declare.vardata.vartype = VariableTypes::String;
             }
             else if (std::holds_alternative<bool>(value))
             {
-                instr.vardata.vartype = VariableTypes::Bool;
+                declare.vardata.vartype = VariableTypes::Bool;
             }
             else if (std::holds_alternative<double>(value))
             {
-                instr.vardata.vartype = VariableTypes::Double;
+                declare.vardata.vartype = VariableTypes::Double;
             }
 
-            instr.vardata.value = value;
+            declare.vardata.value = value;
 
-            if (instr.vardata.isGlobal)
+            if (declare.vardata.isGlobal)
             {
 
-                scope.front()[instr.vardata.name] = std::move(instr.vardata);
+                scope.front()[declare.vardata.name] = std::move(declare.vardata);
             }
             else
             {
 
-                scope.back()[instr.vardata.name] = std::move(instr.vardata);
+                scope.back()[declare.vardata.name] = std::move(declare.vardata);
             }
         }
-        else if (instr.type == Instruction::Types::Assign)
+        else if (std::holds_alternative<AssignInstruction>(instr.data))
         {
-            VariableData &target = getVariable2(instr.vardata.name, scope);
+            auto& assign = std::get<AssignInstruction>(instr.data);
+            VariableData &target = getVariable2(assign.vardata.name, scope);
             if (target.isConst)
             {
                 std::cerr << "Cant change the value of a constant. \n";
@@ -683,15 +686,15 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else
             {
 
-                Value value = Evaluate(makeTokenRange(instr.expression), scope, GlobalFunctionTable);
-                if (!instr.indexExpressions.empty())
+                Value value = Evaluate(makeTokenRange(assign.expression), scope, GlobalFunctionTable);
+                if (!assign.indexExpressions.empty())
                 {
-                    if (!instr.indexExpressions.empty())
+                    if (!assign.indexExpressions.empty())
                     {
                         std::vector<std::size_t> indices;
 
                         // Evaluate each index expression.
-                        for (const auto &indexExpression : instr.indexExpressions)
+                        for (const auto &indexExpression : assign.indexExpressions)
                         {
                             Value indexValue = Evaluate(
                                 makeTokenRange(indexExpression),
@@ -749,19 +752,19 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 {
                     if (target.isStrict)
                     {
-                        if (std::holds_alternative<int>(value) && instr.vardata.vartype == VariableTypes::Int)
+                        if (std::holds_alternative<int>(value) && assign.vardata.vartype == VariableTypes::Int)
                         {
                             target.value = std::move(value);
                         }
-                        else if (std::holds_alternative<std::string>(value) && instr.vardata.vartype == VariableTypes::String)
+                        else if (std::holds_alternative<std::string>(value) && assign.vardata.vartype == VariableTypes::String)
                         {
                             target.value = std::move(value);
                         }
-                        else if (std::holds_alternative<double>(value) && instr.vardata.vartype == VariableTypes::Double)
+                        else if (std::holds_alternative<double>(value) && assign.vardata.vartype == VariableTypes::Double)
                         {
                             target.value = std::move(value);
                         }
-                        else if (std::holds_alternative<bool>(value) && instr.vardata.vartype == VariableTypes::Bool)
+                        else if (std::holds_alternative<bool>(value) && assign.vardata.vartype == VariableTypes::Bool)
                         {
                             target.value = std::move(value);
                         }
@@ -772,15 +775,16 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     }
                     else
                     {
-                        getVariable2(instr.vardata.name, scope).value = value;
+                        getVariable2(assign.vardata.name, scope).value = value;
                     }
                 }
             }
             continue;
         }
-        else if (instr.type == Instruction::Types::For)
+        else if (std::holds_alternative<ForInstruction>(instr.data))
         {
-            Value iterateable = Evaluate(makeTokenRange(instr.iterateable), scope, GlobalFunctionTable);
+            auto& forst = std::get<ForInstruction>(instr.data);
+            Value iterateable = Evaluate(makeTokenRange(forst.iterateable), scope, GlobalFunctionTable);
 
             std::size_t length = variantLength(iterateable);
 
@@ -790,16 +794,16 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else
             {
-                scope.back()[instr.object] = {instr.object, indexVariant(iterateable, 0), true, true, false, VariableTypes::AllAccept};
+                scope.back()[forst.object] = {forst.object, indexVariant(iterateable, 0), true, true, false, VariableTypes::AllAccept};
 
-                auto &toModify = getVariable2(instr.object, scope);
+                auto &toModify = getVariable2(forst.object, scope);
 
                 for (std::size_t index = 0; index < length; ++index)
                 {
                     toModify.value = indexVariant(iterateable, index);
 
                     ExecutionResult result = interpret(
-                        instr.body,
+                        forst.body,
                         scope,
                         GlobalFunctionTable);
 
@@ -813,17 +817,18 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
             }
         }
-        else if (instr.type == Instruction::Types::If)
+        else if (std::holds_alternative<IfInstruction>(instr.data))
         {
+            auto& ifst = std::get<IfInstruction>(instr.data);
             scope.push_back(VariableTable{});
 
             if (variantToBool2(Evaluate(
-                    makeTokenRange(instr.condition),
+                    makeTokenRange(ifst.condition),
                     scope,
                     GlobalFunctionTable)))
             {
                 ExecutionResult result = interpret(
-                    instr.body, scope, GlobalFunctionTable);
+                    ifst.body, scope, GlobalFunctionTable);
 
                 if (result.didReturn || result.didBreak || result.didContinue)
                 {
@@ -831,10 +836,10 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     return result;
                 }
             }
-            else if (!instr.elseBody.empty())
+            else if (!ifst.elseBody.empty())
             {
                 ExecutionResult result = interpret(
-                    instr.elseBody, scope, GlobalFunctionTable);
+                    ifst.elseBody, scope, GlobalFunctionTable);
 
                 if (result.didReturn || result.didBreak || result.didContinue)
                 {
@@ -845,15 +850,16 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
             scope.pop_back();
         }
-        else if (instr.type == Instruction::Types::While)
+        else if (std::holds_alternative<WhileInstruction>(instr.data))
         {
+            auto& whilest = std::get<WhileInstruction>(instr.data);
             while (variantToBool2(Evaluate(
-                makeTokenRange(instr.condition),
+                makeTokenRange(whilest.condition),
                 scope,
                 GlobalFunctionTable)))
             {
                 ExecutionResult result = interpret(
-                    instr.body,
+                    whilest.body,
                     scope,
                     GlobalFunctionTable);
 
@@ -866,7 +872,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                     continue;
             }
         }
-        else if (instr.type == Instruction::Types::Break)
+        else if (std::holds_alternative<BreakInstruction>(instr.data))
         {
 
             ExecutionResult exec;
@@ -874,20 +880,20 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             return exec;
         }
 
-        else if (instr.type == Instruction::Types::Continue)
+        else if (std::holds_alternative<ContinueInstruction>(instr.data))
         {
 
             ExecutionResult exec;
             exec.didContinue = true;
             return exec;
         }
-        else if (instr.type == Instruction::Types::FunctionCall)
+        else if (std::holds_alternative<FunctionCallInstruction>(instr.data))
         {
-
-            std::string path = join(instr.path, ".");
+            auto& fcall = std::get<FunctionCallInstruction>(instr.data);
+            std::string path = join(fcall.path, ".");
             if (path == "Int")
             { // for casting Int(varname);
-                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
                 if (target.isStrict)
                 {
                     std::cerr << "Cannot cast strict variables";
@@ -903,7 +909,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "Double")
             { // for casting Int(varname);
-                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
                 if (target.isStrict)
                 {
                     std::cerr << "Cannot cast strict variables";
@@ -919,9 +925,9 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "append")
             {
-                Value target = Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable);
+                Value target = Evaluate(makeTokenRange(fcall.arguments[0]), scope, GlobalFunctionTable);
 
-                Value element = Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable);
+                Value element = Evaluate(makeTokenRange(fcall.arguments[1]), scope, GlobalFunctionTable);
 
                 if (std::holds_alternative<ArrayPtr>(target))
                 {
@@ -941,7 +947,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else if (path == "appendByName")
             {
                 Value nameValue = Evaluate(
-                    makeTokenRange(instr.arguments[0]),
+                    makeTokenRange(fcall.arguments[0]),
                     scope,
                     GlobalFunctionTable);
 
@@ -950,7 +956,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 VariableData &target = getVariable2(name, scope);
 
                 Value element = Evaluate(
-                    makeTokenRange(instr.arguments[1]),
+                    makeTokenRange(fcall.arguments[1]),
                     scope,
                     GlobalFunctionTable);
 
@@ -975,11 +981,11 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else if (path == "__varExists")
             {
                 VariableData &target = getVariable2(
-                    variantToString2(instr.arguments[1][0].value),
+                    variantToString2(fcall.arguments[1][0].value),
                     scope);
 
                 VariableData &argument = getVariable2(
-                    variantToString2(instr.arguments[0][0].value),
+                    variantToString2(fcall.arguments[0][0].value),
                     scope);
 
                 target.value = doesVariableExist(
@@ -988,13 +994,13 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "__native.getOsType")
             {
-                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
                 target.value = osType();
             }
             else if (path == "__exec")
             {
 
-                auto tokenized = lex(variantToString2(Evaluate(makeTokenRange(instr.arguments[0]), scope, GlobalFunctionTable)));
+                auto tokenized = lex(variantToString2(Evaluate(makeTokenRange(fcall.arguments[0]), scope, GlobalFunctionTable)));
                 std::vector<std::string> evalPath;
                 auto parsed = parse(tokenized, evalPath);
                 ExecutionResult exec = interpret(
@@ -1006,30 +1012,30 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "Terminal.IO.print")
             {
-                for (size_t k = 0; k < instr.arguments.size(); k++)
+                for (size_t k = 0; k < fcall.arguments.size(); k++)
                 {
-                    std::cout << value_to_string(Evaluate(makeTokenRange(instr.arguments[k]), scope, GlobalFunctionTable));
+                    std::cout << value_to_string(Evaluate(makeTokenRange(fcall.arguments[k]), scope, GlobalFunctionTable));
                 }
             }
             else if (path == "os")
             {
-                if (instr.arguments.empty())
+                if (fcall.arguments.empty())
                     throw std::runtime_error("os requires at least one argument");
 
                 std::string command = variantToString2(
                     Evaluate(
-                        makeTokenRange(instr.arguments[0]),
+                        makeTokenRange(fcall.arguments[0]),
                         scope,
                         GlobalFunctionTable));
 
                 std::vector<std::string> args;
 
-                for (size_t i = 1; i < instr.arguments.size(); ++i)
+                for (size_t i = 1; i < fcall.arguments.size(); ++i)
                 {
                     args.push_back(
                         variantToString2(
                             Evaluate(
-                                makeTokenRange(instr.arguments[i]),
+                                makeTokenRange(fcall.arguments[i]),
                                 scope,
                                 GlobalFunctionTable)));
                 }
@@ -1040,12 +1046,12 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             {
                 VariableData &source =
                     getVariable2(
-                        variantToString2(instr.arguments[0][0].value),
+                        variantToString2(fcall.arguments[0][0].value),
                         scope);
 
                 VariableData &target =
                     getVariable2(
-                        variantToString2(instr.arguments[1][0].value),
+                        variantToString2(fcall.arguments[1][0].value),
                         scope);
 
                 Value &value = source.value;
@@ -1055,33 +1061,33 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
             else if (path == "chrti")
             {
-                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
-                target.value = charCode(variantToString2(Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
+                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                target.value = charCode(variantToString2(Evaluate(makeTokenRange(fcall.arguments[1]), scope, GlobalFunctionTable)));
             }
             else if (path == "itchr")
             {
-                VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
-                target.value = charFromCode(variantToInt2(Evaluate(makeTokenRange(instr.arguments[1]), scope, GlobalFunctionTable)));
+                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                target.value = charFromCode(variantToInt2(Evaluate(makeTokenRange(fcall.arguments[1]), scope, GlobalFunctionTable)));
             }
             else if (path == "Terminal.IO.println")
             {
-                for (size_t k = 0; k < instr.arguments.size(); k++)
+                for (size_t k = 0; k < fcall.arguments.size(); k++)
                 {
-                    std::cout << variantToString2(Evaluate(makeTokenRange(instr.arguments[k]), scope, GlobalFunctionTable));
+                    std::cout << variantToString2(Evaluate(makeTokenRange(fcall.arguments[k]), scope, GlobalFunctionTable));
                     std::cout << "\n";
                 }
             }
             else if (path == "Terminal.IO.input")
             {
 
-                if (instr.arguments.size() == 0)
+                if (fcall.arguments.size() == 0)
                 {
                     std::string buffer = "";
                     std::getline(std::cin, buffer);
                 }
                 else
                 {
-                    VariableData &target = getVariable2(variantToString2(instr.arguments[0][0].value), scope);
+                    VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
                     if (!target.isConst)
                     {
                         if (target.vartype == VariableTypes::String || !target.isStrict)
@@ -1106,9 +1112,9 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "Terminal.clear")
             {
-                if (instr.arguments.size() != 0)
+                if (fcall.arguments.size() != 0)
                 {
-                    std::cerr << "Argument Overflow! Function 'clear' expected 0 arguments, got " << instr.arguments.size() << ". \n";
+                    std::cerr << "Argument Overflow! Function 'clear' expected 0 arguments, got " << fcall.arguments.size() << ". \n";
                 }
                 else
                 {
@@ -1118,15 +1124,15 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else if (path == "free")
             {
 
-                if (instr.arguments.size() == 0)
+                if (fcall.arguments.size() == 0)
                 {
                     std::cerr << "Function 'free' requires atleast 1 argument";
                 }
                 else
                 {
-                    for (int k = 0; k < instr.arguments.size(); k++)
+                    for (int k = 0; k < fcall.arguments.size(); k++)
                     {
-                        scope.back().erase(variantToString2(instr.arguments[k][0].value));
+                        scope.back().erase(variantToString2(fcall.arguments[k][0].value));
                     }
                 }
             }
@@ -1135,13 +1141,13 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             {
                 GFunction &targetFunc = funcIt->second;
 
-                if (instr.arguments.size() != targetFunc.locals.size())
+                if (fcall.arguments.size() != targetFunc.locals.size())
                 {
                     std::cerr << "Error: function " << path
                               << " expected "
                               << targetFunc.locals.size()
                               << " arguments but got "
-                              << instr.arguments.size()
+                              << fcall.arguments.size()
                               << "\n";
 
                     ExecutionResult result;
@@ -1151,11 +1157,11 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
 
                 // Evaluate arguments
-                for (size_t k = 0; k < instr.arguments.size(); k++)
+                for (size_t k = 0; k < fcall.arguments.size(); k++)
                 {
                     targetFunc.locals[k].value =
                         Evaluate(
-                            makeTokenRange(instr.arguments[k]),
+                            makeTokenRange(fcall.arguments[k]),
                             scope,
                             GlobalFunctionTable);
                 }

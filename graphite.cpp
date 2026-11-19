@@ -1,8 +1,6 @@
 #include <chrono>
 #include <iostream>
 #include <cstring>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include "lexer.h"
 #include "parser.h"
 #include "interpreter.h"
@@ -12,16 +10,18 @@
 
 void printMemoryUsage()
 {
-    struct rusage usage;
+    struct rusage usage{};
+
     if (getrusage(RUSAGE_SELF, &usage) == 0)
     {
-
-        std::cout << "Peak RAM usage: " << usage.ru_maxrss << " KB";
+        std::cout << "Peak RAM usage: "
+                  << usage.ru_maxrss << " KB\n";
     }
 }
 int main(int argc, char *argv[])
 {
     std::vector<std::string> path;
+    
     ScopeStack scope;
     FunctionTable ftable;
     initInterpreter(scope);
@@ -29,17 +29,12 @@ int main(int argc, char *argv[])
     { // repl mode
         std::cout << "Graphite version-0.1 \n";
         bool debugMode = false;
+        std::string input ="";
         while (true)
         {
-            char *input = readline("graphite-<< ");
-
-            if (!input)
-                break;
-
-            if (*input)
-                add_history(input);
-
-            if (strcmp(input, "--debug") == 0)
+            
+            std::getline(std::cin,input);
+            if (std::strcmp(input.c_str(), "--debug") == 0)
             {
                 debugMode = !debugMode;
                 std::cout << "Debug mode: "
@@ -47,7 +42,7 @@ int main(int argc, char *argv[])
                           << "\n";
                 continue;
             }
-            else if (strcmp(input, "--quit") == 0)
+            else if (std::strcmp(input.c_str(), "--quit") == 0)
             {
                 break;
             }
@@ -63,8 +58,6 @@ int main(int argc, char *argv[])
                           << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
                           << " nanoseconds\n";
             }
-
-            free(input);
         }
     }
     bool debugMode = false;
@@ -92,6 +85,8 @@ int main(int argc, char *argv[])
         std::cout << "\n Execution Time: "
                   << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
                   << " nanoseconds\n";
+        printf("Instruction: %zu bytes\n",
+        sizeof(Instruction));
 
         printMemoryUsage();
     }

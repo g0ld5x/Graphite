@@ -1,7 +1,0 @@
-use "stdlib"
-
-var text = "merhaba dünya"
-
-var result = std.split(text," ")
-
-std.print(result[1])

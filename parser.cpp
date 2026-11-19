@@ -1022,7 +1022,8 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
         { // could be a function,if,for,while,fn,var,const,strict or a function call like Terminal.IO.print("hello world!");
             if (value == "use")
             {
-                instr.type = Instruction::Types::Use;
+                
+                auto& use = instr.data.template emplace<UseInstruction>();
                 i++;
                 while (input[i].type == TokenType::NewLine)
                 {
@@ -1035,7 +1036,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 if (input[i].type == TokenType::String)
                 {
-                    instr.importPath.push_back(variantToString(input[i].value));
+                    use.importPath.push_back(variantToString(input[i].value));
                 }
                 else
                 {
@@ -1046,20 +1047,20 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     {
                         if (input[i].type == TokenType::String)
                         {
-                            instr.importPath.push_back(
+                            use.importPath.push_back(
                                 variantToString(input[i].value));
                         }
 
                         i++;
                     }
                 }
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(use));
             }
 
             else if (value == "fn")
             {
-                instr.type = Instruction::Types::FunctionDeclare;
-                instr.isStrict = strictMode;
+                auto& fndeclare = instr.data.template emplace<FunctionDeclareInstruction>();
+                fndeclare.isStrict = strictMode;
 
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
@@ -1071,7 +1072,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                         functionName = prefix + "." + functionName;
                     }
-                    instr.Funcname = functionName;
+                    fndeclare.Funcname = functionName;
 
                     i++;
                 }
@@ -1112,23 +1113,22 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         if (input[i].type != TokenType::Identifier)
                             continue;
 
-                        if (instr.locals.size() <= slot)
-                            instr.locals.resize(slot + 1);
+                        if (fndeclare.locals.size() <= slot)
+                            fndeclare.locals.resize(slot + 1);
 
                         std::string name = variantToString(input[i].value);
-
                         if (name == "string")
-                            instr.locals[slot].vartype = VariableTypes::String;
+                            fndeclare.locals[slot].vartype = VariableTypes::String;
                         else if (name == "int")
-                            instr.locals[slot].vartype = VariableTypes::Int;
+                            fndeclare.locals[slot].vartype = VariableTypes::Int;
                         else if (name == "bool")
-                            instr.locals[slot].vartype = VariableTypes::Bool;
+                            fndeclare.locals[slot].vartype = VariableTypes::Bool;
                         else if (name == "double")
-                            instr.locals[slot].vartype = VariableTypes::Double;
+                           fndeclare.locals[slot].vartype = VariableTypes::Double;
                         else if (name == "value[]")
-                            instr.locals[slot].vartype = VariableTypes::Array;
+                            fndeclare.locals[slot].vartype = VariableTypes::Array;
                         else
-                            instr.locals[slot].name = name;
+                            fndeclare.locals[slot].name = name;
                     }
                 }
 
@@ -1167,33 +1167,33 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     i++;
                 }
                 std::vector<std::string> empty = {};
-                instr.body = parse(bodyTokens, empty);
+                auto parsedBody = parse(bodyTokens, empty);
+                fndeclare.body = std::move(parsedBody);
 
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(fndeclare));
 
                 continue;
             }
 
             else if (value == "break")
             {
-                instr.type = Instruction::Types::Break;
-                instructions.push_back(std::move(instr));
+                instructions.push_back(instr.data.template emplace<BreakInstruction>());
             }
             else if (value == "continue")
             {
-                instr.type = Instruction::Types::Continue;
-                instructions.push_back(std::move(instr));
+                instructions.push_back(instr.data.template emplace<ContinueInstruction>());
             }
             else if (value == "for")
             { // for(fruit in fruits) here fruits is the iterateable so it will be stored as a vector of tokens, because it can be a function returning an array or things like that. The object can be stored as a string.
-                instr.type = Instruction::Types::For;
+                auto & forstm = instr.data.template emplace<ForInstruction>();
                 int curlyDepth = 0;
                 // parse the for object
                 ++i;
                 ++i;
                 if (input[i + 1].type == TokenType::ForDivider)
                 {
-                    instr.object = variantToString(input[i].value);
+                    
+                    forstm.object = variantToString(input[i].value);
                     i++;
                 }
                 else
@@ -1214,7 +1214,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     }
                     if (paranDepth > 0)
                     {
-                        instr.iterateable.push_back(input[i]);
+                        forstm.iterateable.push_back(input[i]);
                     }
                 }
 
@@ -1254,14 +1254,14 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         }
                     }
 
-                    instr.body = parse(bodyTokens, path);
+                    forstm.body = parse(bodyTokens, path);
                 }
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(forstm));
             }
 
             else if (value == "while")
             {
-                instr.type = Instruction::Types::While;
+                auto & whlstm = instr.data.template emplace<WhileInstruction>();
 
                 int paranDepth = 0;
                 int curlyDepth = 0;
@@ -1290,7 +1290,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                         if (paranDepth != 0)
                         {
-                            instr.condition.push_back(input[i]);
+                            whlstm.condition.push_back(input[i]);
                         }
                     }
                 }
@@ -1331,14 +1331,15 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         }
                     }
 
-                    instr.body = parse(bodyTokens, path);
+                    whlstm.body = parse(bodyTokens, path);
                 }
 
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(whlstm));
             }
             else if (value == "if")
             {
-                instr.type = Instruction::Types::If;
+                
+                auto & ifstm = instr.data.template emplace<IfInstruction>();
 
                 int paranDepth = 0;
                 int curlyDepth = 0;
@@ -1366,7 +1367,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                         if (paranDepth != 0)
                         {
-                            instr.condition.push_back(input[i]);
+                            ifstm.condition.push_back(input[i]);
                         }
                     }
                 }
@@ -1402,7 +1403,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         }
                     }
 
-                    instr.body = parse(bodyTokens, path);
+                    ifstm.body = parse(bodyTokens, path);
                 }
                 while (i + 1 < input.size() &&
                        input[i + 1].type == TokenType::NewLine)
@@ -1450,10 +1451,10 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                                 elsebodyTokens.push_back(input[i]);
                         }
 
-                        instr.elseBody = parse(elsebodyTokens, path);
+                        ifstm.elseBody = parse(elsebodyTokens, path);
                     }
                 }
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(ifstm));
             }
             else if (value == "strict")
             {
@@ -1466,7 +1467,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
             else if (value == "space")
             {
-                instr.type = Instruction::Types::Space;
+                auto & spcstm = instr.data.template emplace<SpaceInstruction>();
                 std::string name;
 
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
@@ -1516,29 +1517,31 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 }
 
                 path.push_back(std::move(name));
-
-                instr.body = parse(bodyTokens, path);
+                spcstm.body = parse(bodyTokens, path);
 
                 path.pop_back();
 
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(spcstm));
 
                 continue;
             }
 
             else if (value == "var")
             {
+                auto & varstm = instr.data.template emplace<DeclareInstruction>();
                 int paranDepth = 0;
                 bool canContinue = true;
-                instr.vardata.isConst = false;
-                instr.vardata.isStrict = strictMode;
-                instr.vardata.isGlobal = globalMode;
+            
+                
+                varstm.vardata.isConst = false;
+                varstm.vardata.isStrict = strictMode;
+                varstm.vardata.isGlobal = globalMode;
                 strictMode = false;
                 globalMode = false;
-                instr.type = Instruction::Types::Declare;
+
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    instr.vardata.name = variantToString(input[i + 1].value);
+                    varstm.vardata.name = variantToString(input[i + 1].value);
                 }
                 else
                 {
@@ -1580,38 +1583,38 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         expressionDepth--;
                     }
 
-                    instr.expression.push_back(token);
+                    varstm.expression.push_back(token);
                     i++;
                 }
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(varstm));
             }
             else if (value == "return")
             {
-                instr.type = Instruction::Types::Return;
-
+                auto & retstm = instr.data.template emplace<ReturnInstruction>();
                 i++;
 
-                while (input[i].type != TokenType::Semicolon && input[i].type != TokenType::NewLine && input[i + 3].type != TokenType::EndOfFile)
+                while (input[i].type != TokenType::Semicolon && input[i].type != TokenType::NewLine && input[i].type != TokenType::EndOfFile)
                 {
-                    instr.expression.push_back(input[i]);
+                    retstm.expression.push_back(input[i]);
                     i++;
                 }
 
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(retstm));
             }
             else if (value == "const")
             {
+                auto & varstm = instr.data.template emplace<DeclareInstruction>();
                 int paranDepth = 0;
                 bool canContinue = true;
-                instr.vardata.isConst = true;
-                instr.vardata.isStrict = strictMode;
-                instr.vardata.isGlobal = globalMode;
+                
+                varstm.vardata.isConst = true;
+                varstm.vardata.isStrict = strictMode;
+                varstm.vardata.isGlobal = globalMode;
                 strictMode = false;
                 globalMode = false;
-                instr.type = Instruction::Types::Declare;
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    instr.vardata.name = variantToString(input[i + 1].value);
+                    varstm.vardata.name = variantToString(input[i + 1].value);
                 }
                 else
                 {
@@ -1626,17 +1629,17 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 }
                 while (i + 3 < input.size() && (input[i + 3].type != TokenType::NewLine && input[i + 3].type != TokenType::Semicolon && input[i + 3].type != TokenType::EndOfFile))
                 {
-                    instr.expression.push_back(input[i + 3]);
+                    varstm.expression.push_back(input[i + 3]);
                     i++;
                 }
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(varstm));
             }
 
             else if (i + 1 < input.size() &&
                      input[i + 1].type == TokenType::Equals)
             {
-                instr.vardata.name = variantToString(input[i].value);
-                instr.type = Instruction::Types::Assign;
+                auto & assignstm = instr.data.template emplace<AssignInstruction>();
+                assignstm.vardata.name = variantToString(input[i].value);
 
                 int j = i + 2;
                 int depth = 0;
@@ -1665,21 +1668,21 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                     {
                         break;
                     }
-
-                    instr.expression.push_back(input[j]);
+                    assignstm.expression.push_back(input[j]);
                     j++;
                 }
 
                 i = j;
 
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(assignstm));
                 continue;
             }
             else if (i + 1 < input.size() &&
                      input[i + 1].type == TokenType::LBrac)
             {
-                instr.vardata.name = variantToString(input[i].value);
-                instr.type = Instruction::Types::Assign;
+                auto & assignstm = instr.data.template emplace<AssignInstruction>();
+                
+                assignstm.vardata.name = variantToString(input[i].value);
 
                 // Collect consecutive indexing operations.
                 std::size_t j = i + 1;
@@ -1717,8 +1720,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                     if (indexTokens.empty())
                         throw std::runtime_error("Empty index expression");
-
-                    instr.indexExpressions.push_back(
+                    assignstm.indexExpressions.push_back(
                         std::move(indexTokens));
                 }
 
@@ -1754,13 +1756,13 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                             break;
                         }
 
-                        instr.expression.push_back(input[a]);
+                        assignstm.expression.push_back(input[a]);
                         a++;
                     }
 
                     i = a;
 
-                    instructions.push_back(std::move(instr));
+                    instructions.push_back(std::move(assignstm));
                     continue;
                 }
                 else
@@ -1774,12 +1776,12 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                  (input[i + 1].type == TokenType::LParen ||
                   input[i + 1].type == TokenType::Dot)))
             {
-                instr.type = Instruction::Types::FunctionCall;
-                instr.path = path;
+                auto & fncall = instr.data.template emplace<FunctionCallInstruction>();
+                fncall.path = path;
 
                 while (i < input.size() && input[i].type == TokenType::Identifier)
                 {
-                    instr.path.push_back(variantToString(input[i].value));
+                    fncall.path.push_back(variantToString(input[i].value));
 
                     if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
                     {
@@ -1814,10 +1816,10 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                                 // store nested '('
                                 if (paranDepth > 1)
                                 {
-                                    if (instr.arguments.size() <= argCount)
-                                        instr.arguments.resize(argCount + 1);
+                                    if (fncall.arguments.size() <= argCount)
+                                        fncall.arguments.resize(argCount + 1);
 
-                                    instr.arguments[argCount].push_back(current);
+                                    fncall.arguments[argCount].push_back(current);
                                 }
                             }
 
@@ -1828,10 +1830,10 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                                 // store nested ')' but not the function's closing ')'
                                 if (paranDepth > 0)
                                 {
-                                    if (instr.arguments.size() <= argCount)
-                                        instr.arguments.resize(argCount + 1);
+                                    if (fncall.arguments.size() <= argCount)
+                                        fncall.arguments.resize(argCount + 1);
 
-                                    instr.arguments[argCount].push_back(current);
+                                    fncall.arguments[argCount].push_back(current);
                                 }
                             }
 
@@ -1842,23 +1844,23 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                             else
                             {
-                                if (instr.arguments.size() <= argCount)
-                                    instr.arguments.resize(argCount + 1);
+                                if (fncall.arguments.size() <= argCount)
+                                    fncall.arguments.resize(argCount + 1);
 
-                                instr.arguments[argCount].push_back(current);
+                                fncall.arguments[argCount].push_back(current);
                             }
                         }
 
-                        if (instr.arguments.size() == 1 && instr.arguments[0].empty())
+                        if (fncall.arguments.size() == 1 && fncall.arguments[0].empty())
                         {
-                            instr.arguments.clear();
+                            fncall.arguments.clear();
                         }
                     }
 
                     break;
                 }
 
-                instructions.push_back(std::move(instr));
+                instructions.push_back(std::move(fncall));
             }
         }
     }
