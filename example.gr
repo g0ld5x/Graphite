@@ -1,0 +1,7 @@
+use "stdlib"
+
+std.createDictionary("badge")
+
+std.dictionarySet("badge","name","john")
+
+std.print(std.keyExists("badge","name"))

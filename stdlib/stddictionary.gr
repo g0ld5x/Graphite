@@ -11,7 +11,22 @@ space std{
     fn dictionaryExists(name){
         return std.doesVarExist(std.nameDecrypt(name))
     }
+    fn keyExists(name,key){
+        __exec(
+            "var exists = false;
+            var i = 0;
+            for(element in " + nameDecrypt(name) + ") {
+                if(element == " + key + ") {
+                    exists = true
+                }
+                i = i + 2;
+            }"
+        )
 
+            return exists
+
+
+    }
     fn dictionarySet(name,key,linker){
         if(std.dictionaryExists(name) == true){
            appendByName(std.nameDecrypt(name),key)

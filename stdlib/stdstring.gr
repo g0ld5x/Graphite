@@ -1,3 +1,5 @@
+use {"stdlib/stdarray.gr"}
+
 space std{
 
 
@@ -82,6 +84,61 @@ space std{
 
         var result = [buffer1,buffer2]
         return result
+    }
+
+    fn join(input,delimiter){
+        var result = ""
+        var i = 0
+        for (text in input){
+            i = i+1
+
+            if(i is std.size(input)){
+                result = result + text
+            }else{
+                result = result + text + delimiter
+            }
+        }
+
+        return result
+    }
+
+    fn replaceChr(input,before,after)
+    {
+
+        var replace = input
+        var i = 0
+        for(chr in replace){
+            if(chr is before){
+                replace[i] = after
+            }
+
+            i=i+1
+        }
+
+        return replace
+    }
+    fn replace(input,before,after)
+    {
+
+        var replace = input
+        var i = 0
+        var sizeOfReplacement = std.size(before)
+        var replaced = false
+        var frst = before[0]
+
+        var fulfilled = 0
+        for(chr in replace){
+            if(chr is frst && fulfilled < std.size(before)){
+                fulfilled = fulfilled+1
+                replace[i] = after
+                replace[sizeOfReplacement+i] = ""
+                replaced = true
+            }
+
+            i=i+1
+        }
+
+        return replace
     }
 
 }

@@ -88,6 +88,16 @@ int main(int argc, char *argv[])
         printf("Instruction: %zu bytes\n",
         sizeof(Instruction));
 
+        std::cout << "Token: " << sizeof(Token) << '\n';
+    std::cout << "Value: " << sizeof(Value) << '\n';
+    std::cout << "String: " << sizeof(std::string) << '\n';
+    std::cout << "ArrayPtr: " << sizeof(ArrayPtr) << '\n';
+    std::cout << "TokenValue:" << sizeof(TokenValue) << '\n';
+    std::cout << "TokenValue:" << sizeof(ArrayValue) << '\n';
+
+
+    
+
         printMemoryUsage();
     }
 }

@@ -13,11 +13,23 @@
 #include <algorithm>
 #include "Header_LPI/parseHeader.h"
 #include <cstdlib>
-#include <string>
-
-#include <string>
-#include <vector>
 #include <stdexcept>
+
+#include <type_traits>
+#include <string_view>
+#include <variant>
+Value tokenToValue2(const TokenValue& tokenValue)
+{
+    return std::visit([](const auto& value) -> Value {
+        using T = std::decay_t<decltype(value)>;
+
+        if constexpr (std::is_same_v<T, std::string_view>) {
+            return std::string(value);
+        } else {
+            return value;
+        }
+    }, tokenValue);
+}
 
 template <class... Ts>
 struct overloaded : Ts...
@@ -365,15 +377,13 @@ std::vector<Token> resolveFile(const std::string &input)
             return;
         }
 
-        std::string source;
-        std::string line;
 
-        while (std::getline(inputFile, line))
-        {
-            source += line + "\n";
-        }
+        std::string source{
+            std::istreambuf_iterator<char>(inputFile),
+            std::istreambuf_iterator<char>()
+        };
 
-        auto fileTokens = lex(source);
+        auto fileTokens = lex(std::string_view( source));
 
         tokens.insert(
             tokens.end(),
@@ -893,7 +903,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             std::string path = join(fcall.path, ".");
             if (path == "Int")
             { // for casting Int(varname);
-                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2(tokenToValue2(fcall.arguments[0][0].value)), scope);
                 if (target.isStrict)
                 {
                     std::cerr << "Cannot cast strict variables";
@@ -909,7 +919,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "Double")
             { // for casting Int(varname);
-                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2(tokenToValue2(fcall.arguments[0][0].value)), scope);
                 if (target.isStrict)
                 {
                     std::cerr << "Cannot cast strict variables";
@@ -981,11 +991,11 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             else if (path == "__varExists")
             {
                 VariableData &target = getVariable2(
-                    variantToString2(fcall.arguments[1][0].value),
+                    variantToString2(tokenToValue2(fcall.arguments[1][0].value)),
                     scope);
 
                 VariableData &argument = getVariable2(
-                    variantToString2(fcall.arguments[0][0].value),
+                    variantToString2( tokenToValue2(fcall.arguments[0][0].value)),
                     scope);
 
                 target.value = doesVariableExist(
@@ -994,7 +1004,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             }
             else if (path == "__native.getOsType")
             {
-                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2( tokenToValue2(fcall.arguments[0][0].value)), scope);
                 target.value = osType();
             }
             else if (path == "__exec")
@@ -1046,12 +1056,12 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
             {
                 VariableData &source =
                     getVariable2(
-                        variantToString2(fcall.arguments[0][0].value),
+                        variantToString2( tokenToValue2(fcall.arguments[0][0].value)),
                         scope);
 
                 VariableData &target =
                     getVariable2(
-                        variantToString2(fcall.arguments[1][0].value),
+                        variantToString2( tokenToValue2(fcall.arguments[1][0].value)),
                         scope);
 
                 Value &value = source.value;
@@ -1061,12 +1071,12 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
 
             else if (path == "chrti")
             {
-                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2( tokenToValue2(fcall.arguments[0][0].value)), scope);
                 target.value = charCode(variantToString2(Evaluate(makeTokenRange(fcall.arguments[1]), scope, GlobalFunctionTable)));
             }
             else if (path == "itchr")
             {
-                VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                VariableData &target = getVariable2(variantToString2( tokenToValue2(fcall.arguments[0][0].value)), scope);
                 target.value = charFromCode(variantToInt2(Evaluate(makeTokenRange(fcall.arguments[1]), scope, GlobalFunctionTable)));
             }
             else if (path == "Terminal.IO.println")
@@ -1087,7 +1097,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 }
                 else
                 {
-                    VariableData &target = getVariable2(variantToString2(fcall.arguments[0][0].value), scope);
+                    VariableData &target = getVariable2(variantToString2( tokenToValue2(fcall.arguments[0][0].value)), scope);
                     if (!target.isConst)
                     {
                         if (target.vartype == VariableTypes::String || !target.isStrict)
@@ -1132,7 +1142,7 @@ ExecutionResult interpret(const std::vector<Instruction> &input, ScopeStack &sco
                 {
                     for (int k = 0; k < fcall.arguments.size(); k++)
                     {
-                        scope.back().erase(variantToString2(fcall.arguments[k][0].value));
+                        scope.back().erase(variantToString2(tokenToValue2(fcall.arguments[k][0].value)));
                     }
                 }
             }

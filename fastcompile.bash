@@ -4,3 +4,10 @@ g++ -O3 -march=native -flto -fno-plt -fomit-frame-pointer \
     -Wl,--gc-sections -Wl,--as-needed -s \
     lexer.cpp parser.cpp interpreter.cpp graphite.cpp Header_LPI/parseHeader.cpp \
     -o graphite 
+
+
+
+#for debug
+#g++ -O0 -g -ggdb -fno-omit-frame-pointer \
+#    lexer.cpp parser.cpp interpreter.cpp graphite.cpp \
+#    -o graphite

@@ -13,9 +13,29 @@
 #include <cmath>
 #include <sstream>
 #include <climits>
+#include <type_traits>
+#include <string_view>
+
+
 // here we goo
 
+Value tokenToValue(const TokenValue& tokenValue)
+{
+    return std::visit([](const auto& value) -> Value {
+        using T = std::decay_t<decltype(value)>;
+
+        if constexpr (std::is_same_v<T, std::string_view>) {
+            return std::string(value);
+        } else {
+            return value;
+        }
+    }, tokenValue);
+}
+
 std::string arrayToString(const std::shared_ptr<ArrayValue> &array);
+
+
+
 std::string joinpath(
     const std::vector<std::string> &elements,
     const std::string &delimiter)
@@ -223,7 +243,7 @@ bool isInVariables(
     const Token &tok,
     const VariableTable &variables)
 {
-    return variables.find(variantToString(tok.value)) != variables.end();
+    return variables.find(variantToString(tokenToValue(tok.value))) != variables.end();
 }
 
 VariableData *getVariable(std::string name, ScopeStack &scopes)
@@ -403,6 +423,7 @@ Value Evaluate(
                 std::vector<TokenRange> bufferArg;
 
                 int argDepth = 1;
+                int bracketDepth = 0;
                 size_t argStart = parenIndex + 1;
 
                 for (size_t i = parenIndex + 1;
@@ -422,16 +443,20 @@ Value Evaluate(
                         if (argDepth == 0)
                             break;
                     }
-                    else if (currentToken.type == TokenType::Comma &&
-                             argDepth == 1)
+                        else if (currentToken.type == TokenType::LBrac)
+                        {
+                            bracketDepth++;
+                        }
+                        else if (currentToken.type == TokenType::RBrac)
+                        {
+                            bracketDepth--;
+                        }
+                    else if (currentToken.type == TokenType::Comma && argDepth == 1 && bracketDepth == 0)
                     {
-                        // Only add non-empty argument
                         if (argStart < i)
                         {
                             bufferArg.push_back(
-                                tokens.subrange(
-                                    argStart,
-                                    i - 1));
+                                tokens.subrange(argStart, i - 1));
                         }
 
                         argStart = i + 1;
@@ -456,7 +481,7 @@ Value Evaluate(
                         if (!funcPath.empty())
                             funcPath += '.';
 
-                        funcPath += variantToString(tokens[i].value);
+                        funcPath += variantToString( tokenToValue(tokens[i].value));
                     }
                 }
 
@@ -474,20 +499,20 @@ Value Evaluate(
         if (tokens[0].type == TokenType::Identifier)
         {
             VariableData *variable = getVariable(
-                variantToString(tokens[0].value),
+                variantToString(tokenToValue(tokens[0].value)),
                 scope);
 
             if (variable == nullptr)
             {
                 throw std::runtime_error(
                     "Unknown identifier in eval " +
-                    variantToString(tokens[0].value));
+                    variantToString(tokenToValue(tokens[0].value)));
             }
 
             return variable->value;
         }
 
-        return tokens[0].value;
+        return tokenToValue(tokens[0].value);
     }
 
     TokenRange range = tokens;
@@ -1017,7 +1042,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
         Instruction instr;
 
         Token tok = input[i];
-        std::string value = variantToString(tok.value);
+        std::string value = variantToString(tokenToValue(tok.value));
         if (tok.type == TokenType::Identifier)
         { // could be a function,if,for,while,fn,var,const,strict or a function call like Terminal.IO.print("hello world!");
             if (value == "use")
@@ -1036,7 +1061,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 if (input[i].type == TokenType::String)
                 {
-                    use.importPath.push_back(variantToString(input[i].value));
+                    use.importPath.push_back(variantToString(tokenToValue(input[i].value)));
                 }
                 else
                 {
@@ -1048,7 +1073,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         if (input[i].type == TokenType::String)
                         {
                             use.importPath.push_back(
-                                variantToString(input[i].value));
+                                variantToString( tokenToValue(input[i].value)));
                         }
 
                         i++;
@@ -1064,7 +1089,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    std::string functionName = variantToString(input[i + 1].value);
+                    std::string functionName = variantToString( tokenToValue(input[i + 1].value));
 
                     if (!path.empty())
                     {
@@ -1116,7 +1141,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                         if (fndeclare.locals.size() <= slot)
                             fndeclare.locals.resize(slot + 1);
 
-                        std::string name = variantToString(input[i].value);
+                        std::string name = variantToString( tokenToValue(input[i].value));
                         if (name == "string")
                             fndeclare.locals[slot].vartype = VariableTypes::String;
                         else if (name == "int")
@@ -1193,7 +1218,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 if (input[i + 1].type == TokenType::ForDivider)
                 {
                     
-                    forstm.object = variantToString(input[i].value);
+                    forstm.object = variantToString( tokenToValue(input[i].value));
                     i++;
                 }
                 else
@@ -1413,7 +1438,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 if (i + 1 < input.size() &&
                     input[i + 1].type == TokenType::Identifier &&
-                    variantToString(input[i + 1].value) == "else")
+                    variantToString( tokenToValue(input[i + 1].value)) == "else")
                 {
                     i++; // move to else
 
@@ -1472,7 +1497,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    name = variantToString(input[i + 1].value);
+                    name = variantToString( tokenToValue(input[i + 1].value));
                     i++;
                 }
                 else
@@ -1541,7 +1566,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    varstm.vardata.name = variantToString(input[i + 1].value);
+                    varstm.vardata.name = variantToString( tokenToValue(input[i + 1].value));
                 }
                 else
                 {
@@ -1614,7 +1639,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                 globalMode = false;
                 if (i + 1 < input.size() && input[i + 1].type == TokenType::Identifier)
                 {
-                    varstm.vardata.name = variantToString(input[i + 1].value);
+                    varstm.vardata.name = variantToString( tokenToValue(input[i + 1].value));
                 }
                 else
                 {
@@ -1639,7 +1664,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
                      input[i + 1].type == TokenType::Equals)
             {
                 auto & assignstm = instr.data.template emplace<AssignInstruction>();
-                assignstm.vardata.name = variantToString(input[i].value);
+                assignstm.vardata.name = variantToString( tokenToValue(input[i].value));
 
                 int j = i + 2;
                 int depth = 0;
@@ -1682,7 +1707,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
             {
                 auto & assignstm = instr.data.template emplace<AssignInstruction>();
                 
-                assignstm.vardata.name = variantToString(input[i].value);
+                assignstm.vardata.name = variantToString( tokenToValue(input[i].value));
 
                 // Collect consecutive indexing operations.
                 std::size_t j = i + 1;
@@ -1781,7 +1806,7 @@ std::vector<Instruction> parse(const std::vector<Token> &input, std::vector<std:
 
                 while (i < input.size() && input[i].type == TokenType::Identifier)
                 {
-                    fncall.path.push_back(variantToString(input[i].value));
+                    fncall.path.push_back(variantToString( tokenToValue(input[i].value)));
 
                     if (i + 1 < input.size() && input[i + 1].type == TokenType::Dot)
                     {

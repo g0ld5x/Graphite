@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <cstdint>
 #include <memory>
 struct ArrayValue;
 
@@ -20,7 +21,12 @@ using Value = std::variant<
 struct ArrayValue {
     std::vector<Value> values;
 };
-enum class TokenType
+
+
+
+using TokenValue = std::variant<int,double,std::string>;
+
+enum class TokenType : std::uint8_t
 {
     Identifier = 'I', // writeln,write,for,while,
     LParen = '(',     //(
@@ -62,11 +68,8 @@ enum class TokenType
 
 struct Token
 {
+    TokenValue value;
     TokenType type;
-    Value value;
-    int line;
-    int column;
-    std::string errorMessage;
 };
 std::vector<Token> lex(std::string_view input);
 

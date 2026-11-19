@@ -3,6 +3,21 @@
 #include <string>
 #include "parseHeader.h"
 #include <sstream>
+#include <type_traits>
+#include <string_view>
+#include <variant>
+Value tokenToValue3(const TokenValue& tokenValue)
+{
+    return std::visit([](const auto& value) -> Value {
+        using T = std::decay_t<decltype(value)>;
+
+        if constexpr (std::is_same_v<T, std::string_view>) {
+            return std::string(value);
+        } else {
+            return value;
+        }
+    }, tokenValue);
+}
 
 std::string variantToString3(const Value &a)
 {
@@ -28,7 +43,7 @@ ExportList parseHeader(const std::vector<Token> & input){
     for (size_t i = 0; i < input.size(); i++)
     {
         const Token & current = input[i];
-        if(current.type == TokenType::Identifier &&  variantToString3(current.value) == "export"){
+        if(current.type == TokenType::Identifier &&  variantToString3( tokenToValue3(current.value)) == "export"){
             ++i;
             while(input[i].type == TokenType::NewLine){
                 ++i;
@@ -37,7 +52,7 @@ ExportList parseHeader(const std::vector<Token> & input){
                 ++i;
                 while(input[i].type != TokenType::RCurl){
                     if(input[i].type ==  TokenType::String){
-                        exports.paths.emplace_back(variantToString3(input[i].value));
+                        exports.paths.emplace_back(variantToString3( tokenToValue3(input[i].value)));
                     }
                     ++i;
                 }
